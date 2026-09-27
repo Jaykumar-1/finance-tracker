@@ -1,0 +1,180 @@
+@import "tailwindcss";
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    background-color: #090f1a;
+    color: #e8eef8;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #090f1a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #20314a;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #314a6e;
+}
+
+
+/* Mobile-first finishing touches: preserve the desktop design while preventing
+   horizontal overflow and making touch targets/forms/calendar cells easier to use. */
+html, body, #root {
+  min-width: 0;
+  width: 100%;
+  min-height: 100%;
+}
+
+body {
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+button, input, select, textarea {
+  touch-action: manipulation;
+}
+
+@media (max-width: 639px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+
+  /* Keep cards and controls inside the viewport. */
+  main {
+    overflow-x: hidden;
+  }
+
+  /* Tables remain readable by horizontal scrolling instead of crushing columns. */
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  /* Avoid overly large modal margins on small phones. */
+  .fixed.inset-0 > div {
+    max-width: calc(100vw - 1rem);
+  }
+}
+
+@media (max-width: 380px) {
+  /* Very small phones: keep the calendar usable without changing its desktop layout. */
+  .grid.grid-cols-7 {
+    gap: 2px !important;
+  }
+}
+
+/* Phone layout refinements for the dashboard calendar and category ordering. */
+@media (max-width: 639px) {
+  /* The seven-column calendar keeps all days visible, but gives each day enough room
+     for the date, transaction count, and a compact financial figure. */
+  .grid.grid-cols-7 > button {
+    min-width: 0 !important;
+    min-height: 72px !important;
+    padding: 4px !important;
+    border-radius: 9px !important;
+    overflow: hidden !important;
+  }
+
+  .grid.grid-cols-7 > button > div:first-child {
+    gap: 2px !important;
+  }
+
+  .grid.grid-cols-7 > button > div:first-child > div {
+    gap: 2px !important;
+  }
+
+  .grid.grid-cols-7 > button > div:last-child {
+    margin-top: 4px !important;
+    gap: 3px !important;
+  }
+
+  .grid.grid-cols-7 > button > div:last-child > div {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    font-size: 8px !important;
+    line-height: 1.1 !important;
+    padding: 3px 3px !important;
+    letter-spacing: -0.1px;
+  }
+
+  /* Make category reordering controls comfortable for thumbs. */
+  [title="Move up"],
+  [title="Move down"],
+  [title="Move category up"],
+  [title="Move category down"],
+  [title="Move subcategory up"],
+  [title="Move subcategory down"] {
+    min-width: 32px !important;
+    min-height: 32px !important;
+  }
+
+  /* Prevent long category names from squeezing the action buttons. */
+  [title="Move up"],
+  [title="Move down"],
+  [title="Move category up"],
+  [title="Move category down"],
+  [title="Move subcategory up"],
+  [title="Move subcategory down"] {
+    flex-shrink: 0 !important;
+  }
+}
+
+
+/* Analytics layout: keep the three category charts together on desktop. */
+.analytics-donut-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.analytics-month-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.analytics-month-card {
+  min-width: 0;
+  padding: 1rem;
+  border-radius: 1rem;
+  border: 1px solid #26344b;
+  background: linear-gradient(145deg, #111d30 0%, #0d1728 100%);
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.analytics-month-card:hover {
+  transform: translateY(-2px);
+  border-color: #3b5274;
+  background: linear-gradient(145deg, #142238 0%, #0f1a2c 100%);
+}
+
+@media (max-width: 1100px) {
+  .analytics-donut-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .analytics-month-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .analytics-donut-grid,
+  .analytics-month-grid {
+    grid-template-columns: 1fr;
+  }
+}
