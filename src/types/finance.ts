@@ -66,6 +66,8 @@ export interface CloudLedger {
   transactions: Transaction[];
   /** IDs removed on another device; kept as tombstones so real-time sync does not resurrect deletes. */
   deletedTransactionIds?: string[];
+  /** Timestamp of the last full transaction erase. Transactions older than this reset are ignored. */
+  resetAt?: string;
   updatedAt: string;
 }
 

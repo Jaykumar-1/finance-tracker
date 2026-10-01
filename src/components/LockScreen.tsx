@@ -348,7 +348,7 @@ export const LockScreen: React.FC = () => {
                   type="text"
                   value={signInIdentifier}
                   onChange={e => setSignInIdentifier(e.target.value)}
-                  placeholder="e.g. jaykumar or name@email.com"
+                  placeholder="Username or user@gmail.com"
                   autoFocus
                   required
                   className="w-full px-3.5 py-2.5 bg-[#090f1d] border border-[#253754] focus:border-blue-500 rounded-xl text-sm text-white placeholder-[#5a6f8f] focus:outline-hidden transition-all pl-9.5"
@@ -366,7 +366,7 @@ export const LockScreen: React.FC = () => {
                   type={showSignInPassword ? 'text' : 'password'}
                   value={signInPassword}
                   onChange={e => setSignInPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="Password"
                   required
                   className="w-full px-3.5 py-2.5 bg-[#090f1d] border border-[#253754] focus:border-blue-500 rounded-xl text-sm text-white placeholder-[#5a6f8f] focus:outline-hidden transition-all pl-9.5 pr-10"
                 />
@@ -430,7 +430,7 @@ export const LockScreen: React.FC = () => {
                   type="text"
                   value={resetIdentifier}
                   onChange={e => setResetIdentifier(e.target.value)}
-                  placeholder="e.g. jaykumar or name@email.com"
+                  placeholder="Username or user@gmail.com"
                   autoFocus
                   required
                   className="w-full px-3.5 py-2.5 bg-[#090f1d] border border-[#253754] focus:border-blue-500 rounded-xl text-sm text-white placeholder-[#5a6f8f] focus:outline-hidden pl-9.5"
@@ -459,7 +459,7 @@ export const LockScreen: React.FC = () => {
                 type="text"
                 value={regUsername}
                 onChange={e => setRegUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                placeholder="e.g. jaykumar"
+                placeholder="Username"
                 required
                 className="w-full px-3.5 py-2 bg-[#090f1d] border border-[#253754] focus:border-blue-500 rounded-xl text-xs text-white placeholder-[#5a6f8f] focus:outline-hidden"
               />
@@ -474,7 +474,7 @@ export const LockScreen: React.FC = () => {
                   type="text"
                   value={regDisplayName}
                   onChange={e => setRegDisplayName(e.target.value)}
-                  placeholder="Jay Kumar"
+                  placeholder="Display name"
                   className="w-full px-3.5 py-2 bg-[#090f1d] border border-[#253754] focus:border-blue-500 rounded-xl text-xs text-white placeholder-[#5a6f8f] focus:outline-hidden"
                 />
               </div>
@@ -504,7 +504,7 @@ export const LockScreen: React.FC = () => {
                 type="email"
                 value={regEmail}
                 onChange={e => setRegEmail(e.target.value)}
-                placeholder="name@gmail.com"
+                placeholder="user@gmail.com"
                 className="w-full px-3.5 py-2 bg-[#090f1d] border border-[#253754] focus:border-blue-500 rounded-xl text-xs text-white placeholder-[#5a6f8f] focus:outline-hidden"
               />
             </div>
@@ -518,7 +518,7 @@ export const LockScreen: React.FC = () => {
                   type={showRegPassword ? 'text' : 'password'}
                   value={regPassword}
                   onChange={e => setRegPassword(e.target.value)}
-                  placeholder="Min 6 characters"
+                  placeholder="Password"
                   required
                   className="w-full px-3.5 py-2 bg-[#090f1d] border border-[#253754] focus:border-blue-500 rounded-xl text-xs text-white placeholder-[#5a6f8f] focus:outline-hidden pr-9"
                 />

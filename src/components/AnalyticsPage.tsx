@@ -28,14 +28,17 @@ const PALETTE = [
   '#fca5a5'  // light rose
 ];
 
-// Helper to draw clean SVG Donut Chart
+// Helper to draw a clean, interactive SVG Donut Chart.
+// Each slice is a real arc path (rather than a full circle), so hover events
+// can only activate the category actually under the pointer.
 const SvgDonutChart: React.FC<{
   data: { label: string; value: number }[];
   total: number;
   currency: string;
   accentColor: string;
   emptyLabel: string;
-}> = ({ data, total, currency, accentColor, emptyLabel }) => {
+  onSelectCategory?: (category: string) => void;
+}> = ({ data, total, currency, accentColor, emptyLabel, onSelectCategory }) => {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
   if (total <= 0 || data.length === 0) {
@@ -56,97 +59,115 @@ const SvgDonutChart: React.FC<{
   const radius = 80;
   const strokeWidth = 24;
   const center = 100;
-  const circumference = 2 * Math.PI * radius;
+
+  const polarToCartesian = (angle: number) => {
+    const radians = (angle - 90) * Math.PI / 180;
+    return {
+      x: center + radius * Math.cos(radians),
+      y: center + radius * Math.sin(radians)
+    };
+  };
+
+  const arcPath = (startAngle: number, endAngle: number) => {
+    const start = polarToCartesian(endAngle);
+    const end = polarToCartesian(startAngle);
+    const largeArcFlag = endAngle - startAngle <= 180 ? 0 : 1;
+    return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`;
+  };
 
   let accumulatedAngle = 0;
-
   const slices = data.map((item, index) => {
     const fraction = item.value / total;
-    const strokeDasharray = `${fraction * circumference} ${circumference}`;
-    const strokeDashoffset = -accumulatedAngle;
-    accumulatedAngle += fraction * circumference;
-    const color = PALETTE[index % PALETTE.length];
+    const startAngle = accumulatedAngle;
+    const endAngle = accumulatedAngle + fraction * 360;
+    accumulatedAngle = endAngle;
 
     return {
       ...item,
-      strokeDasharray,
-      strokeDashoffset,
-      color,
+      startAngle,
+      endAngle,
+      color: PALETTE[index % PALETTE.length],
       percent: (fraction * 100).toFixed(1)
     };
   });
 
   const activeSlice = hoveredIdx !== null ? slices[hoveredIdx] : null;
 
+  const handleSelect = (label: string) => {
+    onSelectCategory?.(label);
+  };
+
   return (
     <div className="w-full">
       <div className="h-64 flex items-center justify-center">
         <div className="relative w-52 h-52 flex items-center justify-center">
-        <svg className="w-full h-full -rotate-90" viewBox="0 0 200 200">
-          {slices.map((slice, idx) => (
-            <circle
-              key={slice.label}
-              cx={center}
-              cy={center}
-              r={radius}
-              fill="transparent"
-              stroke={slice.color}
-              strokeWidth={hoveredIdx === idx ? strokeWidth + 4 : strokeWidth}
-              strokeDasharray={slice.strokeDasharray}
-              strokeDashoffset={slice.strokeDashoffset}
-              onMouseEnter={() => setHoveredIdx(idx)}
-              onMouseLeave={() => setHoveredIdx(null)}
-              className="cursor-pointer transition-all duration-200"
-            />
-          ))}
-        </svg>
+          <svg className="w-full h-full" viewBox="0 0 200 200" aria-label="Category donut chart">
+            {slices.map((slice, idx) => (
+              <path
+                key={slice.label}
+                d={arcPath(slice.startAngle, slice.endAngle)}
+                fill="none"
+                stroke={slice.color}
+                strokeWidth={hoveredIdx === idx ? strokeWidth + 4 : strokeWidth}
+                strokeLinecap="butt"
+                pointerEvents="stroke"
+                onMouseEnter={() => setHoveredIdx(idx)}
+                onMouseMove={() => setHoveredIdx(idx)}
+                onMouseLeave={() => setHoveredIdx(null)}
+                onClick={() => handleSelect(slice.label)}
+                onDoubleClick={() => handleSelect(slice.label)}
+                className="cursor-pointer transition-all duration-200"
+              />
+            ))}
+          </svg>
 
-        {/* Center label */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none px-4">
-          {activeSlice ? (
-            <>
-              <span className="text-[10px] uppercase font-bold text-[#8ea0ba] truncate max-w-[120px]">
-                {activeSlice.label}
-              </span>
-              <span className="text-sm font-extrabold text-[#e8eef8]">
-                {formatMoney(activeSlice.value, currency)}
-              </span>
-              <span className="text-[10px] font-bold text-blue-400">
-                {activeSlice.percent}%
-              </span>
-            </>
-          ) : (
-            <>
-              <span className="text-[10px] uppercase font-bold text-[#71839d]">
-                Total
-              </span>
-              <span className="text-base font-extrabold text-[#e8eef8]">
-                {formatMoney(total, currency)}
-              </span>
-              <span className="text-[10px] text-[#8ea0ba]">
-                {data.length} categories
-              </span>
-            </>
-          )}
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none px-4">
+            {activeSlice ? (
+              <>
+                <span className="text-[10px] uppercase font-bold text-[#8ea0ba] truncate max-w-[120px]">
+                  {activeSlice.label}
+                </span>
+                <span className="text-sm font-extrabold text-[#e8eef8]">
+                  {formatMoney(activeSlice.value, currency)}
+                </span>
+                <span className="text-[10px] font-bold text-blue-400">
+                  {activeSlice.percent}%
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-[10px] uppercase font-bold text-[#71839d]">Total</span>
+                <span className="text-base font-extrabold text-[#e8eef8]">
+                  {formatMoney(total, currency)}
+                </span>
+                <span className="text-[10px] text-[#8ea0ba]">
+                  {data.length} categories
+                </span>
+              </>
+            )}
+          </div>
         </div>
       </div>
-      </div>
 
-      {/* Legend */}
       <div className="mt-4 w-full grid grid-cols-2 gap-1.5 text-xs max-h-36 overflow-y-auto px-1">
         {slices.map((slice, idx) => (
-          <div
+          <button
             key={slice.label}
+            type="button"
             onMouseEnter={() => setHoveredIdx(idx)}
+            onMouseMove={() => setHoveredIdx(idx)}
             onMouseLeave={() => setHoveredIdx(null)}
-            className={`flex items-center gap-1.5 p-1 rounded-md cursor-pointer transition-colors ${
+            onClick={() => handleSelect(slice.label)}
+            onDoubleClick={() => handleSelect(slice.label)}
+            className={`flex items-center gap-1.5 p-1 rounded-md cursor-pointer transition-colors text-left ${
               hoveredIdx === idx ? 'bg-[#152238]' : 'hover:bg-[#121c2f]'
             }`}
+            title={`Open ${slice.label} subcategory analytics`}
           >
             <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: slice.color }} />
             <span className="text-[11px] text-[#c8d4e5] truncate flex-1">{slice.label}</span>
             <span className="text-[10px] font-bold text-[#8ea0ba]">{slice.percent}%</span>
-          </div>
+          </button>
         ))}
       </div>
     </div>
@@ -159,6 +180,10 @@ export const AnalyticsPage: React.FC = () => {
   const [mode, setMode] = useState<'monthly' | 'yearly'>('monthly');
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear());
+  const [selectedCategory, setSelectedCategory] = useState<{
+    type: 'income' | 'expense' | 'investment';
+    name: string;
+  } | null>(null);
 
   const availableYears = useMemo(() => {
     const years = Array.from(new Set(transactions.map(t => Number(t.date.slice(0, 4)))));
@@ -224,6 +249,41 @@ export const AnalyticsPage: React.FC = () => {
   const totalIncome = useMemo(() => incomeData.reduce((s, i) => s + i.value, 0), [incomeData]);
   const totalExpense = useMemo(() => expenseData.reduce((s, i) => s + i.value, 0), [expenseData]);
   const totalInvestment = useMemo(() => investmentData.reduce((s, i) => s + i.value, 0), [investmentData]);
+
+  const selectedCategoryAnalytics = useMemo(() => {
+    if (!selectedCategory) return null;
+
+    const categoryTxs = filteredTxs.filter(
+      t => t.type === selectedCategory.type && (t.category || 'Other') === selectedCategory.name
+    );
+
+    const subcategoryMap = new Map<string, { amount: number; count: number }>();
+    categoryTxs.forEach(t => {
+      const sub = t.subcategory?.trim() || 'Uncategorized';
+      const current = subcategoryMap.get(sub) || { amount: 0, count: 0 };
+      current.amount += Number(t.amount) || 0;
+      current.count += 1;
+      subcategoryMap.set(sub, current);
+    });
+
+    const total = categoryTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const subcategories = Array.from(subcategoryMap.entries())
+      .map(([name, stats]) => ({
+        name,
+        ...stats,
+        percentage: total > 0 ? (stats.amount / total) * 100 : 0,
+        average: stats.count > 0 ? stats.amount / stats.count : 0
+      }))
+      .sort((a, b) => b.amount - a.amount);
+
+    return {
+      transactions: categoryTxs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+      subcategories,
+      total,
+      count: categoryTxs.length,
+      average: categoryTxs.length > 0 ? total / categoryTxs.length : 0
+    };
+  }, [filteredTxs, selectedCategory]);
 
   const savingsRate = totalIncome > 0 ? Math.round(((totalIncome - totalExpense) / totalIncome) * 100) : 0;
   const investmentRate = totalIncome > 0 ? Math.round((totalInvestment / totalIncome) * 100) : 0;
@@ -381,6 +441,7 @@ export const AnalyticsPage: React.FC = () => {
             currency={currency}
             accentColor="#37d67a"
             emptyLabel="No income records for this period"
+            onSelectCategory={(category) => setSelectedCategory({ type: 'income', name: category })}
           />
         </div>
 
@@ -400,6 +461,7 @@ export const AnalyticsPage: React.FC = () => {
             currency={currency}
             accentColor="#ff6262"
             emptyLabel="No expenses recorded for this period"
+            onSelectCategory={(category) => setSelectedCategory({ type: 'expense', name: category })}
           />
         </div>
 
@@ -419,6 +481,7 @@ export const AnalyticsPage: React.FC = () => {
             currency={currency}
             accentColor="#5ea7ff"
             emptyLabel="No investment records for this period"
+            onSelectCategory={(category) => setSelectedCategory({ type: 'investment', name: category })}
           />
         </div>
       </div>
@@ -494,6 +557,100 @@ export const AnalyticsPage: React.FC = () => {
           })}
         </div>
       </div>
+      {selectedCategory && selectedCategoryAnalytics && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${selectedCategory.name} analytics`}
+          onMouseDown={e => {
+            if (e.target === e.currentTarget) setSelectedCategory(null);
+          }}
+        >
+          <div className="w-full max-w-2xl max-h-[88vh] overflow-hidden rounded-2xl bg-[#101a2b] border border-[#2b3d58] shadow-2xl">
+            <div className="p-4 sm:p-5 border-b border-[#26344b] flex items-start justify-between gap-3">
+              <div>
+                <div className="text-[10px] uppercase tracking-wider font-bold text-[#71839d]">
+                  {selectedCategory.type} • {mode === 'monthly' ? formatMonthYear(selectedDate) : `Year ${selectedYear}`}
+                </div>
+                <h3 className="text-lg font-extrabold text-[#e8eef8] mt-1">
+                  {selectedCategory.name} — Subcategory Analytics
+                </h3>
+                <p className="text-xs text-[#8ea0ba] mt-1">
+                  {selectedCategoryAnalytics.count} transaction{selectedCategoryAnalytics.count === 1 ? '' : 's'} • Average {formatMoney(selectedCategoryAnalytics.average, currency)}
+                </p>
+              </div>
+              <button type="button" onClick={() => setSelectedCategory(null)} className="w-8 h-8 rounded-lg bg-[#17243a] text-[#9db0c9] hover:text-white hover:bg-[#20314b] transition-colors" aria-label="Close category analytics">×</button>
+            </div>
+
+            <div className="p-4 sm:p-5 overflow-y-auto max-h-[calc(88vh-88px)] space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                <div className="p-3 rounded-xl bg-[#0d1728] border border-[#26344b]">
+                  <div className="text-[10px] uppercase font-bold text-[#71839d]">Category Total</div>
+                  <div className="text-base font-extrabold text-[#e8eef8] mt-1">{formatMoney(selectedCategoryAnalytics.total, currency)}</div>
+                </div>
+                <div className="p-3 rounded-xl bg-[#0d1728] border border-[#26344b]">
+                  <div className="text-[10px] uppercase font-bold text-[#71839d]">Transactions</div>
+                  <div className="text-base font-extrabold text-[#e8eef8] mt-1">{selectedCategoryAnalytics.count}</div>
+                </div>
+                <div className="p-3 rounded-xl bg-[#0d1728] border border-[#26344b] col-span-2 sm:col-span-1">
+                  <div className="text-[10px] uppercase font-bold text-[#71839d]">Average</div>
+                  <div className="text-base font-extrabold text-[#e8eef8] mt-1">{formatMoney(selectedCategoryAnalytics.average, currency)}</div>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-bold text-[#c8d4e5]">Subcategories</h4>
+                  <span className="text-[10px] text-[#71839d]">Share of selected category</span>
+                </div>
+                {selectedCategoryAnalytics.subcategories.length === 0 ? (
+                  <div className="p-4 rounded-xl bg-[#0d1728] border border-[#26344b] text-xs text-[#71839d]">No transactions found for this category in the selected period.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {selectedCategoryAnalytics.subcategories.map((sub, index) => (
+                      <div key={sub.name} className="p-3 rounded-xl bg-[#0d1728] border border-[#26344b]">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-[#e8eef8] truncate">{index + 1}. {sub.name}</div>
+                            <div className="text-[10px] text-[#71839d] mt-0.5">{sub.count} transaction{sub.count === 1 ? '' : 's'} • Avg {formatMoney(sub.average, currency)}</div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className="text-xs font-extrabold text-[#e8eef8]">{formatMoney(sub.amount, currency)}</div>
+                            <div className="text-[10px] font-bold text-blue-400">{sub.percentage.toFixed(1)}%</div>
+                          </div>
+                        </div>
+                        <div className="h-1.5 bg-[#18253a] rounded-full mt-2 overflow-hidden">
+                          <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${Math.min(100, sub.percentage)}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <h4 className="text-xs font-bold text-[#c8d4e5] mb-2">Recent transactions in this category</h4>
+                <div className="space-y-1.5">
+                  {selectedCategoryAnalytics.transactions.slice(0, 8).map(tx => (
+                    <div key={tx.id} className="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-[#0d1728] border border-[#1e2c42]">
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-semibold text-[#d9e2ef] truncate">{tx.subcategory || 'Uncategorized'}</div>
+                        <div className="text-[10px] text-[#71839d] truncate">{tx.date}{tx.note ? ` • ${tx.note}` : ''}</div>
+                      </div>
+                      <span className="text-xs font-bold text-[#e8eef8] shrink-0">{formatMoney(Number(tx.amount) || 0, currency)}</span>
+                    </div>
+                  ))}
+                  {selectedCategoryAnalytics.transactions.length > 8 && (
+                    <div className="text-[10px] text-center text-[#71839d] pt-1">Showing latest 8 of {selectedCategoryAnalytics.transactions.length} transactions</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

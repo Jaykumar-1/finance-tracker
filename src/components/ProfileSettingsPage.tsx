@@ -800,14 +800,14 @@ export const ProfileSettingsPage: React.FC = () => {
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => {
-              if (window.confirm('Are you sure you want to erase all transactions? This will remove all local and demo entries.')) {
+              if (window.confirm('Are you sure you want to erase all transaction data and sample records? Login credentials, username, password, and account profile will NOT be deleted.')) {
                 clearAllTransactions();
               }
             }}
             className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition-colors flex items-center gap-2 cursor-pointer"
           >
             <Trash2 className="w-4 h-4" />
-            <span>Erase All Data & Wipe Sample Records</span>
+            <span>Erase all the data & sample records</span>
           </button>
 
           <button

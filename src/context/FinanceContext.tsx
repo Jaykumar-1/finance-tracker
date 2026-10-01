@@ -158,7 +158,43 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Never trust a persisted Firebase session for this app's privacy gate.
   // A fresh browser visit must explicitly authenticate.
   const [user, setUserState] = useState<UserProfile | null>(null);
-  const [activePage, setActivePage] = useState<AppPage>('dashboard');
+  const getPageFromHistory = (): AppPage => {
+    if (typeof window === 'undefined') return 'dashboard';
+    const statePage = window.history.state?.financeTrackerPage as AppPage | undefined;
+    return statePage || 'dashboard';
+  };
+  const [activePage, setActivePageState] = useState<AppPage>(getPageFromHistory);
+
+  // Keep SPA navigation in the browser history so Android/iOS Back returns
+  // to the previously opened Finance Tracker screen instead of leaving the site.
+  const setActivePage = useCallback((page: AppPage) => {
+    setActivePageState(prev => {
+      if (prev === page) return prev;
+      if (typeof window !== 'undefined') {
+        window.history.pushState({ ...(window.history.state || {}), financeTrackerPage: page }, '', window.location.href);
+      }
+      return page;
+    });
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      const page = (event.state?.financeTrackerPage as AppPage | undefined) || 'dashboard';
+      setActivePageState(page);
+    };
+
+    // Seed the current entry without changing the URL.
+    if (typeof window !== 'undefined' && !window.history.state?.financeTrackerPage) {
+      window.history.replaceState(
+        { ...(window.history.state || {}), financeTrackerPage: activePage },
+        '',
+        window.location.href
+      );
+    }
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Multi-device Ledger identifier
   const [ledgerId, setLedgerIdState] = useState<string>(getInitialLedgerId);
@@ -170,7 +206,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (ledgerId !== 'main') {
         if (url.searchParams.get('ledger') !== ledgerId) {
           url.searchParams.set('ledger', ledgerId);
-          window.history.replaceState({}, '', url.toString());
+          window.history.replaceState({ ...(window.history.state || {}), financeTrackerPage: activePage }, '', url.toString());
         }
       } else {
         // For main ledger, allow clean URL without query param
@@ -179,7 +215,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
       }
     }
-  }, [ledgerId, user?.id]);
+  }, [activePage, ledgerId, user?.id]);
 
   // Sidebar toggle state (persisted)
   const [isSidebarHidden, setIsSidebarHidden] = useState<boolean>(() => {
@@ -298,6 +334,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Debounced Cloud Ledger Auto-Sync
   const cloudSyncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Every cloud write captures this epoch. A full erase increments it so an
+  // already scheduled autosync cannot write the pre-erase transaction set back.
+  const cloudWriteEpochRef = useRef(0);
+  const lastFullEraseAtRef = useRef<string | null>(null);
 
   const persistToCloudLedger = useCallback((
     txs = transactions,
@@ -311,7 +351,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       clearTimeout(cloudSyncTimeoutRef.current);
     }
 
+    const writeEpoch = cloudWriteEpochRef.current;
     cloudSyncTimeoutRef.current = setTimeout(async () => {
+      // Do not execute a pre-erase write.
+      if (writeEpoch !== cloudWriteEpochRef.current) return;
       try {
         setSyncState(prev => ({ ...prev, status: 'syncing', message: 'Syncing to cloud ledger...' }));
         const ledgerData: CloudLedger = {
@@ -322,12 +365,15 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           savingsGoals: goals,
           transactions: txs,
           deletedTransactionIds: deletedIds,
+          resetAt: lastFullEraseAtRef.current || undefined,
           updatedAt: new Date().toISOString()
         };
 
+        // A clear operation may have happened while this callback was waiting.
+        if (writeEpoch !== cloudWriteEpochRef.current) return;
         const res = await storageService.saveCloudLedger(lid, ledgerData);
         // Also keep canonical 'main' ledger in sync so devices visiting direct link immediately see data
-        if (lid !== 'main') {
+        if (lid !== 'main' && writeEpoch === cloudWriteEpochRef.current) {
           storageService.saveCloudLedger('main', { ...ledgerData, id: 'main' }).catch(() => {});
         }
 
@@ -443,7 +489,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
             await storageService.saveCloudLedger(targetId, { ...cloudLedger, ownerUid: user.id });
             cloudLedger = { ...cloudLedger, ownerUid: user.id };
           }
-          const mergedTxs = mergeLedgerTransactions(transactionsRef.current, cloudLedger.transactions || [], cloudLedger.deletedTransactionIds || []);
+          const remoteResetAt = cloudLedger.resetAt || null;
+          const remoteTxs = remoteResetAt
+            ? (cloudLedger.transactions || []).filter(tx => new Date(tx.updatedAt || 0).getTime() > new Date(remoteResetAt).getTime())
+            : (cloudLedger.transactions || []);
+          const mergedTxs = mergeLedgerTransactions(transactionsRef.current, remoteTxs, cloudLedger.deletedTransactionIds || []);
           setTransactions(mergedTxs);
           setDeletedTransactionIds(cloudLedger.deletedTransactionIds || []);
           storageService.saveLocalTransactions(targetId, mergedTxs);
@@ -493,7 +543,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
             return;
           }
           if (Array.isArray(updatedLedger.transactions)) {
-            const mergedTxs = mergeLedgerTransactions(transactionsRef.current, updatedLedger.transactions, updatedLedger.deletedTransactionIds || []);
+            const remoteResetAt = updatedLedger.resetAt || null;
+            // A reset marker is authoritative: any transaction older than the
+            // reset belongs to the pre-erase dataset and must not be resurrected.
+            const remoteTxs = remoteResetAt
+              ? updatedLedger.transactions.filter(tx => new Date(tx.updatedAt || 0).getTime() > new Date(remoteResetAt).getTime())
+              : updatedLedger.transactions;
+            const mergedTxs = mergeLedgerTransactions(transactionsRef.current, remoteTxs, updatedLedger.deletedTransactionIds || []);
             setTransactions(mergedTxs);
             setDeletedTransactionIds(updatedLedger.deletedTransactionIds || []);
             storageService.saveLocalTransactions(targetId, mergedTxs);
@@ -755,19 +811,59 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [activeUserId, categories, currency, deletedTransactionIds, ledgerId, persistToCloudLedger, savingsGoals, showToast, transactions, user]);
 
   const clearAllTransactions = useCallback(async () => {
-    const nextDeletedIds = Array.from(new Set([...deletedTransactionIds, ...transactions.map(t => t.id)]));
+    // Full erase: remove every transaction JSON cache and reset the cloud ledger
+    // itself to an explicitly empty transaction array. Do not touch auth/profile.
+    // Tombstones are also cleared so the exact same Excel file can be imported
+    // again as fresh transactions.
+    const resetAt = new Date().toISOString();
+    cloudWriteEpochRef.current += 1;
+    lastFullEraseAtRef.current = resetAt;
+    if (cloudSyncTimeoutRef.current) {
+      clearTimeout(cloudSyncTimeoutRef.current);
+      cloudSyncTimeoutRef.current = null;
+    }
+
     setTransactions([]);
-    setDeletedTransactionIds(nextDeletedIds);
+    setDeletedTransactionIds([]);
+    transactionsRef.current = [];
+    deletedTransactionIdsRef.current = [];
+
     storageService.purgeLocalTransactions(activeUserId);
     storageService.purgeLocalTransactions(ledgerId);
 
     if (user && user.id) {
-      storageService.clearAllCloudTransactions(user.id).catch(() => {});
+      await storageService.clearAllCloudTransactions(user.id).catch(() => {});
     }
 
-    persistToCloudLedger([], categories, savingsGoals, currency, ledgerId, nextDeletedIds);
-    showToast('All transaction records cleared.', 'warning');
-  }, [activeUserId, categories, currency, ledgerId, persistToCloudLedger, savingsGoals, showToast, user]);
+    const emptyLedger: CloudLedger = {
+      id: ledgerId,
+      ownerUid: user?.id,
+      currency,
+      categories,
+      savingsGoals,
+      transactions: [],
+      deletedTransactionIds: [],
+      resetAt,
+      updatedAt: resetAt
+    };
+
+    // Write synchronously (from the caller's perspective) instead of using the
+    // debounced autosync. This prevents a previously queued non-empty snapshot
+    // from being written back after the erase. Keep both canonical ledger docs
+    // empty so the next initialization cannot recover old transactions.
+    await storageService.saveCloudLedger(ledgerId, emptyLedger).catch(() => {});
+    if (ledgerId !== 'main') {
+      await storageService.saveCloudLedger('main', { ...emptyLedger, id: 'main' }).catch(() => {});
+    }
+
+    setSyncState(prev => ({
+      ...prev,
+      status: 'synced',
+      lastSyncTime: new Date().toLocaleTimeString(),
+      message: 'Ledger cleared; ready for fresh Excel import'
+    }));
+    showToast('All transaction records and sample data were erased. Login credentials were kept.', 'warning');
+  }, [activeUserId, categories, currency, ledgerId, savingsGoals, showToast, user]);
 
   const importTransactions = useCallback(async (
     newTxs: Transaction[],
@@ -797,10 +893,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       addedTxs = newTxs;
       skippedCount = 0;
     } else {
-      // Safe deduplication mode
-      // 1. Build an ID set of already existing transactions
+      // Safe deduplication mode. Excel imports are MERGE-ONLY:
+      // - Existing transactions stay untouched.
+      // - A row already present in the ledger is skipped, even when Excel generated a new ID.
+      // - Only genuinely new rows are appended.
+      // - Duplicate rows inside the same incoming file are also handled consistently.
       const existingIds = new Set<string>();
-      // 2. Build a content fingerprint multiset to accurately detect duplicates even with new random IDs
       const existingFingerprintCounts = new Map<string, number>();
 
       for (const t of transactions) {
@@ -809,28 +907,41 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         existingFingerprintCounts.set(fp, (existingFingerprintCounts.get(fp) || 0) + 1);
       }
 
+      // Track fingerprints already accepted from this import batch. This prevents
+      // repeated rows in one Excel file from being added multiple times after the
+      // ledger's existing copies have been consumed.
+      const acceptedIncomingFingerprintCounts = new Map<string, number>();
+
       for (const incoming of newTxs) {
-        // Match 1: Exact ID already exists
+        // Match 1: Exact transaction ID already exists.
         if (incoming.id && existingIds.has(incoming.id)) {
           skippedCount++;
           continue;
         }
 
-        // Match 2: Content fingerprint already in existing transactions
         const fp = getTransactionFingerprint(incoming);
-        const count = existingFingerprintCounts.get(fp) || 0;
-        if (count > 0) {
-          // Decrement count so each duplicate occurrence is consumed 1:1
-          existingFingerprintCounts.set(fp, count - 1);
+        const existingCount = existingFingerprintCounts.get(fp) || 0;
+
+        // Match 2: Same transaction content already exists in the ledger.
+        if (existingCount > 0) {
+          existingFingerprintCounts.set(fp, existingCount - 1);
           skippedCount++;
           continue;
         }
 
-        // Genuinely new transaction
-        addedTxs.push(incoming);
-        if (incoming.id) {
-          existingIds.add(incoming.id);
+        // Match 3: Same fingerprint already accepted from this exact import batch.
+        // This protects against duplicate rows in the incoming Excel file itself.
+        const acceptedCount = acceptedIncomingFingerprintCounts.get(fp) || 0;
+        if (acceptedCount > 0) {
+          skippedCount++;
+          continue;
         }
+
+        // Genuinely new transaction: append it and reserve its ID/fingerprint so
+        // later rows in this same file cannot add the same transaction again.
+        addedTxs.push(incoming);
+        acceptedIncomingFingerprintCounts.set(fp, acceptedCount + 1);
+        if (incoming.id) existingIds.add(incoming.id);
       }
 
       finalTxs = [...transactions, ...addedTxs];

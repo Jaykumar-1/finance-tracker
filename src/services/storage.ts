@@ -58,6 +58,8 @@ function safeRemoveItem(key: string): void {
 export class FinanceStorageService {
   private static instance: FinanceStorageService;
 
+  private cloudWriteQueues = new Map<string, Promise<void>>();
+
   private constructor() {}
 
   public static getInstance(): FinanceStorageService {
@@ -159,10 +161,43 @@ export class FinanceStorageService {
   }
 
   public purgeLocalTransactions(userId: string): void {
-    safeRemoveItem(STORAGE_KEYS.TRANSACTIONS(userId));
-    safeRemoveItem(STORAGE_KEYS.TRANSACTIONS('anonymous_guest'));
-    safeRemoveItem(STORAGE_KEYS.TRANSACTIONS('guest'));
-    safeRemoveItem(STORAGE_KEYS.TRANSACTIONS(''));
+    // Remove the requested ledger plus every legacy/guest transaction key.
+    // loadAnyLocalTransactions() can recover from any remaining transaction key,
+    // so a full erase must remove all transaction JSON caches, not just the
+    // currently active user's key.
+    const keysToRemove = new Set<string>([
+      STORAGE_KEYS.TRANSACTIONS(userId),
+      STORAGE_KEYS.TRANSACTIONS('main'),
+      STORAGE_KEYS.TRANSACTIONS('default'),
+      STORAGE_KEYS.TRANSACTIONS('anonymous_guest'),
+      STORAGE_KEYS.TRANSACTIONS('guest_user'),
+      STORAGE_KEYS.TRANSACTIONS('guest'),
+      STORAGE_KEYS.TRANSACTIONS('')
+    ]);
+
+    keysToRemove.forEach(safeRemoveItem);
+
+    if (typeof localStorage !== 'undefined') {
+      try {
+        const keys: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('myfinance_') && key.endsWith('_transactions')) {
+            keys.push(key);
+          }
+        }
+        keys.forEach(safeRemoveItem);
+      } catch {}
+    }
+
+    // Also clear the in-memory fallback cache. This matters in restricted/private
+    // browser contexts where localStorage writes can fail and safeSetItem stores
+    // the JSON in memoryStorage instead.
+    for (const key of Array.from(memoryStorage.keys())) {
+      if (key.endsWith('_transactions') || key === STORAGE_KEYS.TRANSACTIONS(userId)) {
+        memoryStorage.delete(key);
+      }
+    }
   }
 
   public loadLocalSavingsGoals(userId: string): MonthlySavingsGoal[] {
@@ -582,7 +617,13 @@ export class FinanceStorageService {
   public async saveCloudLedger(ledgerId: string, ledgerData: CloudLedger): Promise<{ success: boolean; error?: string }> {
     if (!ledgerId) return { success: false, error: 'Ledger ID missing' };
 
+    let release: (() => void) | undefined;
     try {
+      const previous = this.cloudWriteQueues.get(ledgerId) || Promise.resolve();
+      const current = new Promise<void>(resolve => { release = resolve; });
+      this.cloudWriteQueues.set(ledgerId, previous.catch(() => {}).then(() => current));
+      await previous.catch(() => {});
+
       const docRef = doc(db, 'ledgers', ledgerId);
       const rawPayload = {
         id: ledgerId,
@@ -593,6 +634,7 @@ export class FinanceStorageService {
         savingsGoals: Array.isArray(ledgerData.savingsGoals) ? ledgerData.savingsGoals : [],
         transactions: Array.isArray(ledgerData.transactions) ? ledgerData.transactions : [],
         deletedTransactionIds: Array.isArray(ledgerData.deletedTransactionIds) ? ledgerData.deletedTransactionIds : [],
+        resetAt: ledgerData.resetAt,
         updatedAt: ledgerData.updatedAt || new Date().toISOString()
       };
 
@@ -600,8 +642,10 @@ export class FinanceStorageService {
       const cleanPayload = JSON.parse(JSON.stringify(rawPayload));
       await setDoc(docRef, cleanPayload, { merge: true });
 
+      release?.();
       return { success: true };
     } catch (err: any) {
+      release?.();
       console.warn('Cloud Ledger save notice:', err);
       return { success: false, error: err?.message || 'Failed to sync ledger to cloud' };
     }
@@ -627,6 +671,7 @@ export class FinanceStorageService {
           savingsGoals: Array.isArray(data.savingsGoals) ? data.savingsGoals : [],
           transactions: Array.isArray(data.transactions) ? data.transactions : [],
           deletedTransactionIds: Array.isArray(data.deletedTransactionIds) ? data.deletedTransactionIds : [],
+          resetAt: data.resetAt,
           updatedAt: data.updatedAt || new Date().toISOString()
         };
       }

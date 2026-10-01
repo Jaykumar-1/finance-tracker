@@ -163,7 +163,7 @@ export const Dashboard: React.FC = () => {
 
   const targetSavings = activeGoal?.targetSavings || 0;
   const expenseBudget = activeGoal?.expenseBudget || 0;
-  const actualSaved = netCashFlow + investmentTotal;
+  const actualSaved = Math.max(0, netCashFlow + investmentTotal);
   const goalPercent = targetSavings > 0 ? Math.min(100, Math.round((actualSaved / targetSavings) * 100)) : 0;
   const isGoalReached = targetSavings > 0 && actualSaved >= targetSavings;
   const expenseBudgetPercent = expenseBudget > 0 ? Math.min(100, Math.round((expenseTotal / expenseBudget) * 100)) : 0;
@@ -513,9 +513,9 @@ export const Dashboard: React.FC = () => {
             <Wallet className="w-3.5 h-3.5 text-amber-300" />
           </div>
           <div className={`text-lg sm:text-xl font-extrabold mt-1.5 mb-0.5 truncate ${
-            isUnlocked ? (netCashFlow >= 0 ? 'text-amber-300' : 'text-rose-400') : 'text-amber-300'
+            isUnlocked ? (netCashFlow > 0 ? 'text-emerald-400' : 'text-[#71839d]') : 'text-[#71839d]'
           }`}>
-            {isUnlocked ? formatMoney(netCashFlow, currency) : '••••••'}
+            {isUnlocked ? formatMoney(Math.max(0, netCashFlow), currency) : '••••••'}
           </div>
           <div className="text-[10px] text-[#71839d] flex items-center justify-between">
             <span>{isUnlocked ? `${savingsRate}% saved` : 'Locked'}</span>
@@ -832,23 +832,23 @@ export const Dashboard: React.FC = () => {
                 <div className="space-y-2 text-xs">
                   <div className="flex items-center justify-between p-2 rounded-lg bg-[#0d1728] border border-[#1e2c42]">
                     <span className="flex items-center gap-1.5 text-[#8ea0ba]">
-                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Total Expenses
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span><span>Total Expenses</span>
                     </span>
-                    <span className="font-bold text-rose-400">{formatMoney(expenseTotal, currency)}</span>
+                    <span className="font-bold text-rose-400">{formatMoney(expenseTotal, currency)} <span className="text-[10px] text-rose-300/80">({incomeTotal > 0 ? Math.round((expenseTotal / incomeTotal) * 100) : 0}%)</span></span>
                   </div>
 
                   <div className="flex items-center justify-between p-2 rounded-lg bg-[#0d1728] border border-[#1e2c42]">
                     <span className="flex items-center gap-1.5 text-[#8ea0ba]">
-                      <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Investments
+                      <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span><span>Investments</span>
                     </span>
-                    <span className="font-bold text-blue-400">{formatMoney(investmentTotal, currency)}</span>
+                    <span className="font-bold text-blue-400">{formatMoney(investmentTotal, currency)} <span className="text-[10px] text-blue-300/80">({incomeTotal > 0 ? Math.round((investmentTotal / incomeTotal) * 100) : 0}%)</span></span>
                   </div>
 
                   <div className="flex items-center justify-between p-2 rounded-lg bg-[#0d1728] border border-[#1e2c42]">
                     <span className="flex items-center gap-1.5 text-[#8ea0ba]">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> Net Surplus Saved
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span><span>Net Surplus Saved</span>
                     </span>
-                    <span className="font-bold text-emerald-400">{formatMoney(netCashFlow, currency)}</span>
+                    <span className="font-bold text-emerald-400">{formatMoney(Math.max(0, netCashFlow), currency)} <span className="text-[10px] text-emerald-300/80">({incomeTotal > 0 ? Math.round((Math.max(0, netCashFlow) / incomeTotal) * 100) : 0}%)</span></span>
                   </div>
                 </div>
               </div>

@@ -322,7 +322,7 @@ export const AuthModal: React.FC = () => {
                         required
                         value={setupDisplayName}
                         onChange={e => setSetupDisplayName(e.target.value)}
-                        placeholder="e.g. Your Name"
+                        placeholder="Display name"
                         className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#090f1a] border border-[#26344b] text-xs text-white placeholder-[#5d708a] focus:outline-none focus:border-emerald-500"
                       />
                     </div>
@@ -338,7 +338,7 @@ export const AuthModal: React.FC = () => {
                         type="email"
                         value={setupEmail}
                         onChange={e => setSetupEmail(e.target.value)}
-                        placeholder="e.g. name@example.com"
+                        placeholder="user@gmail.com"
                         className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#090f1a] border border-[#26344b] text-xs text-white placeholder-[#5d708a] focus:outline-none focus:border-emerald-500"
                       />
                     </div>
@@ -357,7 +357,7 @@ export const AuthModal: React.FC = () => {
                         required
                         value={setupUsername}
                         onChange={e => setSetupUsername(e.target.value)}
-                        placeholder="e.g. username"
+                        placeholder="Username"
                         className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#090f1a] border border-[#26344b] text-xs text-white placeholder-[#5d708a] focus:outline-none focus:border-emerald-500"
                       />
                     </div>
@@ -384,7 +384,7 @@ export const AuthModal: React.FC = () => {
                         required
                         value={setupPassword}
                         onChange={e => setSetupPassword(e.target.value)}
-                        placeholder="At least 6 characters"
+                        placeholder="Password"
                         className="w-full pl-9 pr-10 py-2 rounded-xl bg-[#090f1a] border border-[#26344b] text-xs text-white placeholder-[#5d708a] focus:outline-none focus:border-emerald-500"
                       />
                       <button
@@ -495,7 +495,7 @@ export const AuthModal: React.FC = () => {
                       required
                       value={signInIdentifier}
                       onChange={e => setSignInIdentifier(e.target.value)}
-                      placeholder="Enter username or email"
+                      placeholder="Username or user@gmail.com"
                       className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#090f1a] border border-[#26344b] text-xs text-white placeholder-[#5d708a] focus:outline-none focus:border-blue-500"
                     />
                   </div>
@@ -522,7 +522,7 @@ export const AuthModal: React.FC = () => {
                       required
                       value={signInPassword}
                       onChange={e => setSignInPassword(e.target.value)}
-                      placeholder="••••••••"
+                      placeholder="Password"
                       className="w-full pl-9 pr-10 py-2 rounded-xl bg-[#090f1a] border border-[#26344b] text-xs text-white placeholder-[#5d708a] focus:outline-none focus:border-blue-500"
                     />
                     <button
@@ -594,7 +594,7 @@ export const AuthModal: React.FC = () => {
                     required
                     value={resetIdentifier}
                     onChange={e => setResetIdentifier(e.target.value)}
-                    placeholder="Enter your username or email"
+                    placeholder="Username or user@gmail.com"
                     className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#090f1a] border border-[#26344b] text-xs text-white placeholder-[#5d708a] focus:outline-none focus:border-amber-500"
                   />
                 </div>
