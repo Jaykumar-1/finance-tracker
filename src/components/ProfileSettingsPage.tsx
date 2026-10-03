@@ -215,7 +215,7 @@ export const ProfileSettingsPage: React.FC = () => {
         return;
       }
       if (result.transactions.length > 0) {
-        importTransactions(result.transactions, false);
+        await importTransactions(result.transactions, false, result.totalRows);
       }
     } catch {
       showToast('Failed to import Excel file.', 'error');

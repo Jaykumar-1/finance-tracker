@@ -4,6 +4,8 @@ export type AccountType = 'Cash' | 'Bank account' | 'UPI' | 'Credit card' | 'Sav
 
 export interface Transaction {
   id: string;
+  /** Stable source transaction/reference number when supplied by Excel/bank export. */
+  referenceId?: string;
   date: string; // YYYY-MM-DD
   amount: number;
   type: TransactionType;

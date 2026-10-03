@@ -28,7 +28,10 @@ const MONTH_NAME_MAP: Record<string, number> = {
 };
 
 export function getTransactionFingerprint(tx: {
+  id?: string;
+  referenceId?: string;
   date: string;
+  rawDate?: string;
   amount: number;
   type: string;
   category: string;
@@ -37,14 +40,49 @@ export function getTransactionFingerprint(tx: {
   note?: string;
   description?: string;
 }): string {
-  const normDate = (tx.date || '').trim();
-  const normAmount = Number(tx.amount || 0).toFixed(2);
-  const normType = (tx.type || 'expense').trim().toLowerCase();
-  const normCat = (tx.category || '').trim().toLowerCase();
-  const normSub = (tx.subcategory || '').trim().toLowerCase();
-  const normAcc = (tx.account || 'bank account').trim().toLowerCase();
-  const normNote = (tx.note || tx.description || '').trim().toLowerCase();
-  return `${normDate}|${normAmount}|${normType}|${normCat}|${normSub}|${normAcc}|${normNote}`;
+  const normalizeText = (value: unknown) => String(value ?? '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+
+  const normalizeAmount = (value: unknown) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n.toFixed(2) : '0.00';
+  };
+
+  // Prefer a real source reference/transaction number when the Excel file has
+  // one. The app-generated random id is deliberately NOT used as a reference.
+  // A reference is combined with date/amount/type so an accidentally reused
+  // reference cannot collapse unrelated transactions.
+  const reference = normalizeText(tx.referenceId);
+  if (reference) {
+    return [
+      'tx-v3-ref',
+      `ref:${reference}`,
+      `date:${normalizeText(tx.date)}`,
+      `amount:${normalizeAmount(tx.amount)}`,
+      `type:${normalizeText(tx.type || 'expense')}`
+    ].join('|');
+  }
+
+  // rawDate preserves time-of-day from Excel exports. The displayed `date`
+  // field intentionally remains YYYY-MM-DD for the rest of the app, but using
+  // rawDate here prevents two genuine transactions on the same day with the
+  // same amount/category from being collapsed when their source timestamps
+  // differ.
+  const sourceDate = normalizeText(tx.rawDate || tx.date);
+
+  return [
+    'tx-v3-composite',
+    `date:${sourceDate}`,
+    `amount:${normalizeAmount(tx.amount)}`,
+    `type:${normalizeText(tx.type || 'expense')}`,
+    `category:${normalizeText(tx.category)}`,
+    `subcategory:${normalizeText(tx.subcategory)}`,
+    `account:${normalizeText(tx.account || 'bank account')}`,
+    `note:${normalizeText(tx.note)}`,
+    `description:${normalizeText(tx.description)}`
+  ].join('|');
 }
 
 export class ExcelService {
@@ -356,7 +394,7 @@ export class ExcelService {
     const date = this.convertDate(rawDate, effectiveFormat);
     if (!date) return null;
 
-    const rawId = String(row['ID'] ?? row['Id'] ?? row['id'] ?? row['Transaction ID'] ?? row['TxID'] ?? row['Ref No'] ?? '').trim();
+    const rawId = String(row['ID'] ?? row['Id'] ?? row['id'] ?? row['Transaction ID'] ?? row['TxID'] ?? row['Ref No'] ?? row['Reference No'] ?? row['Reference'] ?? row['UTR'] ?? row['Transaction Ref'] ?? '').trim();
     const rawCategory = String(row['Category'] ?? row['category'] ?? row['CATEGORY'] ?? '').trim();
     const rawSubcategory = String(row['Subcategory'] ?? row['subcategory'] ?? row['Sub Category'] ?? '').trim();
     const rawAccount = String(row['Account'] ?? row['account'] ?? row['Payment Method'] ?? 'Bank account').trim();
@@ -415,6 +453,7 @@ export class ExcelService {
 
     return {
       id: rawId || generateId(),
+      referenceId: rawId || undefined,
       date,
       amount,
       type,

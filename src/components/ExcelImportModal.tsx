@@ -51,18 +51,20 @@ export const ExcelImportModal: React.FC = () => {
     }
 
     const existingIds = new Set<string>();
-    const existingFingerprintCounts = new Map<string, number>();
+    const knownFingerprints = new Set<string>();
 
     for (const t of transactions) {
       if (t.id) existingIds.add(t.id);
-      const fp = getTransactionFingerprint(t);
-      existingFingerprintCounts.set(fp, (existingFingerprintCounts.get(fp) || 0) + 1);
+      knownFingerprints.add(getTransactionFingerprint(t));
     }
 
     let newCount = 0;
     let duplicateCount = 0;
     const items: { tx: Transaction; isDuplicate: boolean }[] = [];
 
+    // This single set grows as each incoming row is accepted. Therefore an
+    // exact duplicate appearing twice inside the SAME Excel file is also
+    // detected, while legitimate same-amount transactions remain distinct.
     for (const tx of parsedTxs) {
       if (tx.id && existingIds.has(tx.id)) {
         duplicateCount++;
@@ -71,9 +73,7 @@ export const ExcelImportModal: React.FC = () => {
       }
 
       const fp = getTransactionFingerprint(tx);
-      const count = existingFingerprintCounts.get(fp) || 0;
-      if (count > 0) {
-        existingFingerprintCounts.set(fp, count - 1);
+      if (knownFingerprints.has(fp)) {
         duplicateCount++;
         items.push({ tx, isDuplicate: true });
         continue;
@@ -81,8 +81,8 @@ export const ExcelImportModal: React.FC = () => {
 
       newCount++;
       items.push({ tx, isDuplicate: false });
+      knownFingerprints.add(fp);
       if (tx.id) existingIds.add(tx.id);
-      existingFingerprintCounts.set(fp, 1);
     }
 
     return { newCount, duplicateCount, items };

@@ -13,7 +13,8 @@ import {
   Unsubscribe,
   serverTimestamp,
   query,
-  orderBy
+  orderBy,
+  runTransaction as firestoreRunTransaction
 } from 'firebase/firestore';
 
 const STORAGE_KEYS = {
@@ -638,11 +639,32 @@ export class FinanceStorageService {
         updatedAt: ledgerData.updatedAt || new Date().toISOString()
       };
 
-      // Strip all undefined fields so Firestore setDoc does not throw
+      // Strip all undefined fields so Firestore does not receive invalid values.
       const cleanPayload = JSON.parse(JSON.stringify(rawPayload));
-      await setDoc(docRef, cleanPayload, { merge: true });
+
+      // A full erase is a global reset, not merely a local UI action.  A device
+      // that was offline before the erase can still have an old autosync queued.
+      // Reject that stale write atomically if the cloud already contains a newer
+      // reset marker. This prevents deleted data from being resurrected.
+      let rejectedAsStaleReset = false;
+      await firestoreRunTransaction(db, async (transaction) => {
+        const currentSnap = await transaction.get(docRef);
+        const current = currentSnap.exists() ? currentSnap.data() as Partial<CloudLedger> : null;
+        const currentResetAt = current?.resetAt ? new Date(String(current.resetAt)).getTime() : 0;
+        const incomingResetAt = cleanPayload.resetAt ? new Date(String(cleanPayload.resetAt)).getTime() : 0;
+
+        if (currentResetAt > 0 && incomingResetAt < currentResetAt) {
+          rejectedAsStaleReset = true;
+          return;
+        }
+
+        transaction.set(docRef, cleanPayload, { merge: true });
+      });
 
       release?.();
+      if (rejectedAsStaleReset) {
+        return { success: false, error: 'Cloud ledger has a newer reset; stale transaction data was not written.' };
+      }
       return { success: true };
     } catch (err: any) {
       release?.();
