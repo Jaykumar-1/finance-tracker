@@ -8,7 +8,7 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss()],
 
     // Use '/' for local/dev. For GitHub Pages set VITE_BASE=/finance-tracker/ when building.
-    base: process.env.VITE_BASE || '/',
+    base: process.env.VITE_BASE || '/finance-tracker/',
 
     resolve: {
       alias: {
