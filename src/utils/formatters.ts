@@ -48,3 +48,30 @@ export const formatMonthYear = (dateOrMonthKey: Date | string, locale: string = 
   }
   return d.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
 };
+
+/** Build ordered category name list, preferring explicit order when present. */
+export function orderedCategoryNames(
+  structure: Record<string, string[]>,
+  order?: string[]
+): string[] {
+  const keys = Object.keys(structure || {});
+  if (!order || order.length === 0) return keys;
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const name of order) {
+    if (Object.prototype.hasOwnProperty.call(structure, name) && !seen.has(name)) {
+      result.push(name);
+      seen.add(name);
+    }
+  }
+  for (const name of keys) {
+    if (!seen.has(name)) result.push(name);
+  }
+  return result;
+}
+
+export function classificationKey(category: string, subcategory?: string): string {
+  const cat = (category || '').trim();
+  const sub = (subcategory || '').trim();
+  return sub ? `${cat}||${sub}` : cat;
+}

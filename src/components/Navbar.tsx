@@ -45,7 +45,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMobileMenu }) => {
   };
 
   return (
-    <header className="sticky top-0 z-50 h-14 sm:h-16 md:h-[72px] bg-[#0d1627]/90 backdrop-blur-md border-b border-[#26344b] px-2.5 sm:px-3 md:px-6 flex items-center justify-between gap-2 overflow-hidden">
+    <header className="sticky top-0 z-50 h-14 sm:h-16 md:h-[72px] bg-[#0b1424]/85 backdrop-blur-xl border-b border-[#26344b]/80 px-2.5 sm:px-3 md:px-6 flex items-center justify-between gap-2 overflow-hidden">
       {/* Left section */}
       <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-3.5 min-w-0">
         {/* Mobile menu trigger */}
@@ -124,7 +124,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMobileMenu }) => {
         {/* Add Transaction Button */}
         <button
           onClick={() => openTxModal('expense')}
-          className="flex items-center gap-1.5 px-2.5 sm:px-3 md:px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs md:text-sm font-semibold shadow-md shadow-blue-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3 md:px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-xs md:text-sm font-semibold shadow-md shadow-blue-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
         >
           <Plus className="w-4 h-4" />
           <span className="hidden sm:inline">Add</span>

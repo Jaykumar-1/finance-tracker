@@ -6,10 +6,11 @@ import {
   Plus,
   ChevronLeft,
   ChevronRight,
-  ShieldCheck,
   Edit2,
   Trash2,
-  PieChart as PieIcon,
+  Wallet,
+  Landmark,
+  TrendingUp,
   Sparkles
 } from 'lucide-react';
 
@@ -43,7 +44,6 @@ export const InvestmentsPage: React.FC = () => {
     });
   };
 
-  // Laptop/PC month/year navigation with keyboard arrows. Ignore form fields and open modals.
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -61,42 +61,72 @@ export const InvestmentsPage: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [periodMode, isTxModalOpen]);
 
-  // Filter investment transactions
-  const periodTxs = useMemo(() => {
+  const periodKey = useMemo(() => {
     if (periodMode === 'monthly') {
-      const key = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}`;
-      return transactions.filter(t => t.type === 'investment' && getMonthKey(t.date) === key);
-    } else {
-      const year = selectedDate.getFullYear();
-      return transactions.filter(t => t.type === 'investment' && Number(t.date.slice(0, 4)) === year);
+      return `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}`;
     }
-  }, [transactions, periodMode, selectedDate]);
+    return String(selectedDate.getFullYear());
+  }, [periodMode, selectedDate]);
 
-  const totalInvestment = useMemo(() => {
-    return periodTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-  }, [periodTxs]);
+  const inPeriod = (date: string) => {
+    if (periodMode === 'monthly') return getMonthKey(date) === periodKey;
+    return date.slice(0, 4) === periodKey;
+  };
 
-  // All-time cumulative investments
-  const allTimeTotal = useMemo(() => {
-    return transactions.filter(t => t.type === 'investment').reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-  }, [transactions]);
+  // Investment transactions for the selected period
+  const periodInvestTxs = useMemo(() => {
+    return transactions.filter(t => t.type === 'investment' && inPeriod(t.date));
+  }, [transactions, periodMode, periodKey]);
 
-  // Aggregate by Category (Mutual Funds, Stocks, Gold, FD, PPF, etc.)
+  const totalInvestment = useMemo(
+    () => periodInvestTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0),
+    [periodInvestTxs]
+  );
+
+  // Cash flow for the same period (income - expenses) = liquid cash saved
+  const periodIncome = useMemo(
+    () => transactions.filter(t => t.type === 'income' && inPeriod(t.date)).reduce((s, t) => s + (Number(t.amount) || 0), 0),
+    [transactions, periodMode, periodKey]
+  );
+  const periodExpense = useMemo(
+    () => transactions.filter(t => t.type === 'expense' && inPeriod(t.date)).reduce((s, t) => s + (Number(t.amount) || 0), 0),
+    [transactions, periodMode, periodKey]
+  );
+
+  // Net Cash Saved = income - expenses (liquid surplus before / independent of investments)
+  const netCashSaved = periodIncome - periodExpense;
+
+  // Net Investments = capital deployed into assets this period
+  const netInvestments = totalInvestment;
+
+  // Wealth growth = cash surplus + investments (total money "put aside")
+  const totalWealthBuilt = netCashSaved + netInvestments;
+
+  const allTimeInvestments = useMemo(
+    () => transactions.filter(t => t.type === 'investment').reduce((s, t) => s + (Number(t.amount) || 0), 0),
+    [transactions]
+  );
+
   const categoryBreakdown = useMemo(() => {
     const map: Record<string, number> = {};
-    periodTxs.forEach(t => {
+    periodInvestTxs.forEach(t => {
       const cat = t.category || 'Other Assets';
       map[cat] = (map[cat] || 0) + (Number(t.amount) || 0);
     });
     return Object.entries(map).sort((a, b) => b[1] - a[1]);
-  }, [periodTxs]);
+  }, [periodInvestTxs]);
 
   const maxCategoryAmount = Math.max(...categoryBreakdown.map(c => c[1]), 1);
 
+  const periodLabel =
+    periodMode === 'monthly'
+      ? formatMonthYear(selectedDate)
+      : String(selectedDate.getFullYear());
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 animate-fade-in-up">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#101a2b] p-4 md:p-5 rounded-2xl border border-[#26344b] shadow-md">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-card p-4 md:p-5 rounded-2xl">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-xs font-extrabold uppercase tracking-wider text-blue-400">
@@ -107,56 +137,53 @@ export const InvestmentsPage: React.FC = () => {
             Investments & Savings Portfolio
           </h2>
           <p className="text-xs text-[#8ea0ba]">
-            Track Mutual Fund SIPs, Stocks, ETFs, Gold, Fixed Deposits, PPF, and long-term assets.
+            Separate liquid cash savings from capital deployed into investments.
           </p>
         </div>
 
         <button
           onClick={() => openTxModal('investment', toIsoDate(new Date()))}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs md:text-sm font-semibold shadow-md shadow-blue-600/20 transition-all"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-xs md:text-sm font-semibold shadow-md shadow-blue-600/25 transition-all"
         >
           <Plus className="w-4 h-4" />
           <span>Add Investment</span>
         </button>
       </div>
 
-      {/* Period Selector Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#101a2b] p-3.5 rounded-2xl border border-[#26344b]">
+      {/* Period Selector */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 glass-card p-3.5 rounded-2xl">
         <div className="flex items-center gap-2">
           <button
             onClick={handlePrev}
-            className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#152238] border border-[#26344b] text-[#dbe6f6] hover:bg-[#1c2e4a]"
+            className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#152238] border border-[#26344b] text-[#9eb0c9] hover:text-white hover:border-blue-500/40 transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <span className="text-sm font-bold text-[#e8eef8] min-w-[140px] text-center">
-            {periodMode === 'monthly' ? formatMonthYear(selectedDate) : selectedDate.getFullYear()}
-          </span>
+          <div className="min-w-[140px] text-center">
+            <div className="text-sm font-bold text-[#e8eef8]">{periodLabel}</div>
+            <div className="text-[10px] text-[#71839d]">Use ← → keys</div>
+          </div>
           <button
             onClick={handleNext}
-            className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#152238] border border-[#26344b] text-[#dbe6f6] hover:bg-[#1c2e4a]"
+            className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#152238] border border-[#26344b] text-[#9eb0c9] hover:text-white hover:border-blue-500/40 transition-colors"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="flex items-center gap-1.5 bg-[#0d1728] p-1 rounded-xl border border-[#26344b]">
+        <div className="flex items-center gap-1 p-1 rounded-xl bg-[#090f1a] border border-[#26344b]">
           <button
             onClick={() => setPeriodMode('monthly')}
-            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-              periodMode === 'monthly'
-                ? 'bg-[#1b2c47] text-white border border-[#557fb8]'
-                : 'text-[#8ea0ba] hover:text-white'
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              periodMode === 'monthly' ? 'bg-blue-600 text-white' : 'text-[#8ea0ba] hover:text-white'
             }`}
           >
             Monthly
           </button>
           <button
             onClick={() => setPeriodMode('yearly')}
-            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-              periodMode === 'yearly'
-                ? 'bg-[#1b2c47] text-white border border-[#557fb8]'
-                : 'text-[#8ea0ba] hover:text-white'
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              periodMode === 'yearly' ? 'bg-blue-600 text-white' : 'text-[#8ea0ba] hover:text-white'
             }`}
           >
             Yearly
@@ -164,97 +191,121 @@ export const InvestmentsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-4 rounded-2xl bg-[#101a2b] border border-[#26344b] border-t-4 border-t-blue-500 shadow-md">
-          <span className="text-xs font-bold uppercase tracking-wider text-[#8ea0ba]">
-            Invested in Period ({periodMode})
-          </span>
-          <div className="text-2xl font-extrabold text-blue-400 mt-2">
-            {formatMoney(totalInvestment, currency)}
+      {/* Distinct metric cards: Cash Saved vs Investments */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="stat-card stat-card-savings p-4 border-t-3 border-t-emerald-400">
+          <div className="flex items-center justify-between text-[#8ea0ba] text-[11px] font-bold uppercase tracking-wider">
+            <span>Net Cash Saved</span>
+            <Wallet className="w-4 h-4 text-emerald-400" />
           </div>
+          <div className={`text-xl font-extrabold mt-2 truncate ${netCashSaved >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+            {formatMoney(netCashSaved, currency)}
+          </div>
+          <p className="text-[10px] text-[#71839d] mt-1">
+            Income − Expenses (liquid surplus)
+          </p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#101a2b] border border-[#26344b] shadow-md">
-          <span className="text-xs font-bold uppercase tracking-wider text-[#8ea0ba]">
-            Investment Entries
-          </span>
-          <div className="text-2xl font-extrabold text-[#e8eef8] mt-2">
-            {periodTxs.length}
+        <div className="stat-card stat-card-invest p-4 border-t-3 border-t-blue-500">
+          <div className="flex items-center justify-between text-[#8ea0ba] text-[11px] font-bold uppercase tracking-wider">
+            <span>Net Investments</span>
+            <Landmark className="w-4 h-4 text-blue-400" />
           </div>
+          <div className="text-xl font-extrabold text-blue-400 mt-2 truncate">
+            {formatMoney(netInvestments, currency)}
+          </div>
+          <p className="text-[10px] text-[#71839d] mt-1">
+            Capital deployed into assets
+          </p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#101a2b] border border-[#26344b] shadow-md">
-          <span className="text-xs font-bold uppercase tracking-wider text-[#8ea0ba]">
-            All-Time Total Invested
-          </span>
-          <div className="text-2xl font-extrabold text-emerald-400 mt-2">
-            {formatMoney(allTimeTotal, currency)}
+        <div className="stat-card p-4 border-t-3 border-t-amber-400">
+          <div className="flex items-center justify-between text-[#8ea0ba] text-[11px] font-bold uppercase tracking-wider">
+            <span>Wealth Built</span>
+            <TrendingUp className="w-4 h-4 text-amber-300" />
           </div>
+          <div className="text-xl font-extrabold text-amber-300 mt-2 truncate">
+            {formatMoney(totalWealthBuilt, currency)}
+          </div>
+          <p className="text-[10px] text-[#71839d] mt-1">
+            Cash saved + investments
+          </p>
+        </div>
+
+        <div className="stat-card p-4 border-t-3 border-t-violet-400">
+          <div className="flex items-center justify-between text-[#8ea0ba] text-[11px] font-bold uppercase tracking-wider">
+            <span>All-Time Invested</span>
+            <Sparkles className="w-4 h-4 text-violet-400" />
+          </div>
+          <div className="text-xl font-extrabold text-violet-300 mt-2 truncate">
+            {formatMoney(allTimeInvestments, currency)}
+          </div>
+          <p className="text-[10px] text-[#71839d] mt-1">
+            Lifetime investment total
+          </p>
         </div>
       </div>
 
-      {/* Breakdown by Asset Category & Transaction List */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Category breakdown bar charts */}
-        <div className="p-5 rounded-2xl bg-[#101a2b] border border-[#26344b] shadow-md">
-          <h3 className="text-base font-bold text-[#e8eef8] mb-4 flex items-center justify-between">
-            <span>Asset Allocation</span>
-            <span className="text-xs text-[#8ea0ba] font-normal">Ranked by allocation</span>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Category breakdown */}
+        <div className="glass-card p-5 rounded-2xl">
+          <h3 className="text-base font-bold text-[#e8eef8] mb-1 flex items-center gap-2">
+            <LineChart className="w-4 h-4 text-blue-400" />
+            Investment by Category
           </h3>
+          <p className="text-[11px] text-[#71839d] mb-4">{periodLabel}</p>
 
           {categoryBreakdown.length > 0 ? (
-            <div className="space-y-4">
-              {categoryBreakdown.map(([category, amount]) => {
-                const percent = totalInvestment > 0 ? ((amount / totalInvestment) * 100).toFixed(1) : '0';
-                const barWidth = ((amount / maxCategoryAmount) * 100).toFixed(1);
-
-                return (
-                  <div key={category} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs font-semibold">
-                      <span className="text-[#e8eef8]">{category}</span>
-                      <span className="text-blue-400">
-                        {formatMoney(amount, currency)} <span className="text-[#71839d] font-normal">({percent}%)</span>
-                      </span>
-                    </div>
-                    <div className="w-full h-2.5 bg-[#0d1728] rounded-full overflow-hidden border border-[#22304a]">
-                      <div
-                        className="h-full bg-gradient-to-r from-blue-500 to-indigo-400 rounded-full transition-all duration-500"
-                        style={{ width: `${barWidth}%` }}
-                      />
-                    </div>
+            <div className="space-y-3">
+              {categoryBreakdown.map(([name, amount]) => (
+                <div key={name}>
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="font-semibold text-[#c8d4e5] truncate">{name}</span>
+                    <span className="text-blue-300 font-bold">{formatMoney(amount, currency)}</span>
                   </div>
-                );
-              })}
+                  <div className="progress-track">
+                    <div
+                      className="progress-fill bg-gradient-to-r from-blue-500 to-blue-400"
+                      style={{ width: `${Math.round((amount / maxCategoryAmount) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
-            <div className="py-12 text-center text-xs text-[#71839d]">
-              No investment transactions recorded for this period.
+            <div className="empty-state py-10">
+              <div className="empty-state-icon">
+                <LineChart className="w-6 h-6" />
+              </div>
+              <p className="text-xs text-[#71839d]">No investments recorded for this period.</p>
             </div>
           )}
         </div>
 
-        {/* Transactions list */}
-        <div className="p-5 rounded-2xl bg-[#101a2b] border border-[#26344b] shadow-md">
+        {/* Investment records */}
+        <div className="glass-card p-5 rounded-2xl">
           <h3 className="text-base font-bold text-[#e8eef8] mb-4">
-            Investment Records ({periodTxs.length})
+            Investment Records ({periodInvestTxs.length})
           </h3>
 
-          {periodTxs.length > 0 ? (
+          {periodInvestTxs.length > 0 ? (
             <div className="divide-y divide-[#1d2a3e] max-h-[420px] overflow-y-auto pr-1">
-              {periodTxs
+              {periodInvestTxs
+                .slice()
                 .sort((a, b) => b.date.localeCompare(a.date))
                 .map(tx => (
                   <div key={tx.id} className="py-3 flex items-center justify-between gap-3 group">
-                    <div>
-                      <div className="text-sm font-semibold text-[#e8eef8]">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-[#e8eef8] truncate">
                         {tx.category}
                       </div>
-                      <div className="text-xs text-[#71839d] mt-0.5">
-                        {tx.date} {tx.subcategory && `· ${tx.subcategory}`} {tx.note && `· ${tx.note}`}
+                      <div className="text-xs text-[#71839d] mt-0.5 truncate">
+                        {tx.date}
+                        {tx.subcategory && ` · ${tx.subcategory}`}
+                        {tx.note && ` · ${tx.note}`}
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 shrink-0">
                       <span className="text-sm font-bold text-blue-400">
                         ↗{formatMoney(tx.amount, currency)}
                       </span>
@@ -281,8 +332,17 @@ export const InvestmentsPage: React.FC = () => {
                 ))}
             </div>
           ) : (
-            <div className="py-12 text-center text-xs text-[#71839d]">
-              No investment transactions for this period.
+            <div className="empty-state py-10">
+              <div className="empty-state-icon">
+                <Landmark className="w-6 h-6" />
+              </div>
+              <p className="text-xs text-[#71839d]">No investment transactions for this period.</p>
+              <button
+                onClick={() => openTxModal('investment', toIsoDate(new Date()))}
+                className="mt-3 text-xs font-semibold text-blue-400 hover:text-blue-300"
+              >
+                + Add your first investment
+              </button>
             </div>
           )}
         </div>

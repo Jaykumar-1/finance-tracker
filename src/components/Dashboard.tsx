@@ -458,7 +458,7 @@ export const Dashboard: React.FC = () => {
       {/* 3. 4 High-Density KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
         {/* Income */}
-        <div className="p-3 sm:p-3.5 rounded-2xl bg-[#101a2b] border border-[#26344b] border-t-3 border-t-emerald-500 shadow-xs">
+        <div className="stat-card stat-card-income p-3 sm:p-3.5 border-t-3 border-t-emerald-500">
           <div className="flex items-center justify-between text-[#8ea0ba] text-[11px] font-bold uppercase tracking-wider">
             <span>Income</span>
             <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
@@ -475,7 +475,7 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Expenses */}
-        <div className="p-3 sm:p-3.5 rounded-2xl bg-[#101a2b] border border-[#26344b] border-t-3 border-t-rose-500 shadow-xs">
+        <div className="stat-card stat-card-expense p-3 sm:p-3.5 border-t-3 border-t-rose-500">
           <div className="flex items-center justify-between text-[#8ea0ba] text-[11px] font-bold uppercase tracking-wider">
             <span>Expenses</span>
             <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
@@ -492,7 +492,7 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Investments */}
-        <div className="p-3 sm:p-3.5 rounded-2xl bg-[#101a2b] border border-[#26344b] border-t-3 border-t-blue-500 shadow-xs">
+        <div className="stat-card stat-card-invest p-3 sm:p-3.5 border-t-3 border-t-blue-500">
           <div className="flex items-center justify-between text-[#8ea0ba] text-[11px] font-bold uppercase tracking-wider">
             <span>Investments</span>
             <LineChart className="w-3.5 h-3.5 text-blue-400" />
@@ -507,7 +507,7 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Net Savings */}
-        <div className="p-3 sm:p-3.5 rounded-2xl bg-[#101a2b] border border-[#26344b] border-t-3 border-t-amber-400 shadow-xs">
+        <div className="stat-card stat-card-savings p-3 sm:p-3.5 border-t-3 border-t-amber-400">
           <div className="flex items-center justify-between text-[#8ea0ba] text-[11px] font-bold uppercase tracking-wider">
             <span>Net Savings</span>
             <Wallet className="w-3.5 h-3.5 text-amber-300" />
@@ -523,6 +523,7 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
 
       {/* 4. MAIN CONTENT AREA (LOCKED PRIVACY STATE vs FULL MONTH DASHBOARD) */}
       {!isUnlocked ? (

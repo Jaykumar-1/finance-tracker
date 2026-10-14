@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import {
   CategoryConfig,
+  CategoryOrder,
   CloudLedger,
   FinanceDataBackup,
   MonthlySavingsGoal,
+  SpendingClassification,
   SyncState,
   Transaction,
   TransactionType,
@@ -13,7 +15,7 @@ import { authService } from '../services/auth';
 import { storageService } from '../services/storage';
 import { DEFAULT_CATEGORIES } from '../utils/constants';
 import { getSampleSavingsGoals, getSampleTransactions } from '../utils/sampleData';
-import { generateId, getMonthKey, toIsoDate } from '../utils/formatters';
+import { generateId, getMonthKey, orderedCategoryNames, toIsoDate } from '../utils/formatters';
 import { getTransactionFingerprint } from '../services/excel';
 import confetti from 'canvas-confetti';
 
@@ -38,9 +40,14 @@ interface FinanceContextType {
   // Data
   transactions: Transaction[];
   categories: CategoryConfig;
+  categoryOrder: CategoryOrder;
+  getOrderedCategoryNames: (type: TransactionType) => string[];
   savingsGoals: MonthlySavingsGoal[];
   currency: string;
   setCurrency: (c: string) => void;
+  spendingClassification: SpendingClassification;
+  setSpendingRule: (key: string, bucket: 'need' | 'want' | null) => void;
+  setSpendingRulesBulk: (rules: Record<string, 'need' | 'want'>) => void;
   
   // Operations
   addTransaction: (tx: Omit<Transaction, 'id' | 'updatedAt'>) => Promise<void>;
@@ -259,6 +266,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Initial local states for instant render with local recovery
   const [categories, setCategories] = useState<CategoryConfig>(() => storageService.loadLocalCategories(activeUserId));
+  const [categoryOrder, setCategoryOrder] = useState<CategoryOrder>(() => storageService.loadCategoryOrder(activeUserId));
+  const [spendingClassification, setSpendingClassification] = useState<SpendingClassification>(() =>
+    storageService.loadSpendingClassification(activeUserId)
+  );
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     const local = storageService.loadLocalTransactions(activeUserId);
     if (local.length > 0) return local;
@@ -1009,31 +1020,56 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const cleanName = name.trim();
     if (!cleanName) return false;
 
-    let success = false;
     setCategories(prev => {
       const currentMap = { ...prev[type] };
       if (oldName && oldName !== cleanName) {
-        const subcats = currentMap[oldName] || [];
-        delete currentMap[oldName];
-        currentMap[cleanName] = subcats;
-      } else if (!currentMap[cleanName]) {
+        // Rename: preserve subcategories and position
+        const entries = Object.entries(currentMap);
+        const rebuilt: Record<string, string[]> = {};
+        for (const [key, subs] of entries) {
+          if (key === oldName) {
+            rebuilt[cleanName] = subs;
+          } else if (key !== cleanName) {
+            rebuilt[key] = subs;
+          }
+        }
+        if (!(cleanName in rebuilt)) rebuilt[cleanName] = currentMap[oldName] || [];
+        const updated = { ...prev, [type]: rebuilt };
+        storageService.saveLocalCategories(activeUserId, updated);
+        storageService.saveLocalCategories(ledgerId, updated);
+        if (user) storageService.saveCloudUserProfile(user.id, { categories: updated }).catch(() => {});
+        persistToCloudLedger(transactions, updated, savingsGoals, currency, ledgerId);
+        return updated;
+      }
+      if (!currentMap[cleanName]) {
         currentMap[cleanName] = [];
       }
       const updated = { ...prev, [type]: currentMap };
       storageService.saveLocalCategories(activeUserId, updated);
       storageService.saveLocalCategories(ledgerId, updated);
-      if (user) {
-        storageService.saveCloudUserProfile(user.id, { categories: updated }).catch(() => {});
-      }
+      if (user) storageService.saveCloudUserProfile(user.id, { categories: updated }).catch(() => {});
       persistToCloudLedger(transactions, updated, savingsGoals, currency, ledgerId);
-      success = true;
       return updated;
     });
 
-    if (success) {
-      showToast(`Category "${cleanName}" saved.`, 'success');
-    }
-    return success;
+    // Keep explicit order in sync (append new names; rename in place)
+    setCategoryOrder(prevOrder => {
+      const list = [...(prevOrder[type] || [])];
+      if (oldName && oldName !== cleanName) {
+        const idx = list.indexOf(oldName);
+        if (idx >= 0) list[idx] = cleanName;
+        else if (!list.includes(cleanName)) list.push(cleanName);
+      } else if (!list.includes(cleanName)) {
+        list.push(cleanName);
+      }
+      const next = { ...prevOrder, [type]: list };
+      storageService.saveCategoryOrder(activeUserId, next);
+      storageService.saveCategoryOrder(ledgerId, next);
+      return next;
+    });
+
+    showToast(`Category "${cleanName}" saved.`, 'success');
+    return true;
   }, [activeUserId, currency, ledgerId, persistToCloudLedger, savingsGoals, showToast, transactions, user]);
 
   const deleteCategory = useCallback((type: TransactionType, name: string) => {
@@ -1048,6 +1084,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
       persistToCloudLedger(transactions, updated, savingsGoals, currency, ledgerId);
       return updated;
+    });
+    setCategoryOrder(prevOrder => {
+      const list = (prevOrder[type] || []).filter(n => n !== name);
+      const next = { ...prevOrder, [type]: list };
+      storageService.saveCategoryOrder(activeUserId, next);
+      storageService.saveCategoryOrder(ledgerId, next);
+      return next;
     });
     showToast(`Category "${name}" deleted.`, 'info');
   }, [activeUserId, currency, ledgerId, persistToCloudLedger, savingsGoals, showToast, transactions, user]);
@@ -1104,45 +1147,66 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     showToast(`Subcategory "${subcategory}" deleted.`, 'info');
   }, [activeUserId, currency, ledgerId, persistToCloudLedger, savingsGoals, showToast, transactions, user]);
 
+  const getOrderedCategoryNames = useCallback((type: TransactionType): string[] => {
+    return orderedCategoryNames(categories[type] || {}, categoryOrder[type] || []);
+  }, [categories, categoryOrder]);
+
+  const persistCategoryOrder = useCallback((order: CategoryOrder) => {
+    setCategoryOrder(order);
+    storageService.saveCategoryOrder(activeUserId, order);
+    storageService.saveCategoryOrder(ledgerId, order);
+  }, [activeUserId, ledgerId]);
+
   const moveCategory = useCallback((type: TransactionType, name: string, direction: 'up' | 'down') => {
-    setCategories(prev => {
-      const names = Object.keys(prev[type] || {});
+    setCategoryOrder(prevOrder => {
+      const names = orderedCategoryNames(categories[type] || {}, prevOrder[type] || []);
       const index = names.indexOf(name);
       const target = direction === 'up' ? index - 1 : index + 1;
-      if (index < 0 || target < 0 || target >= names.length) return prev;
+      if (index < 0 || target < 0 || target >= names.length) return prevOrder;
 
       const reorderedNames = [...names];
       [reorderedNames[index], reorderedNames[target]] = [reorderedNames[target], reorderedNames[index]];
+      const nextOrder = { ...prevOrder, [type]: reorderedNames };
+      storageService.saveCategoryOrder(activeUserId, nextOrder);
+      storageService.saveCategoryOrder(ledgerId, nextOrder);
+
+      // Also rebuild category object in the same order for local consistency
       const reordered: Record<string, string[]> = {};
-      reorderedNames.forEach(key => { reordered[key] = prev[type][key]; });
-      const updated = { ...prev, [type]: reordered };
+      reorderedNames.forEach(key => { reordered[key] = categories[type][key]; });
+      const updated = { ...categories, [type]: reordered };
+      setCategories(updated);
       storageService.saveLocalCategories(activeUserId, updated);
       storageService.saveLocalCategories(ledgerId, updated);
       if (user) storageService.saveCloudUserProfile(user.id, { categories: updated }).catch(() => {});
       persistToCloudLedger(transactions, updated, savingsGoals, currency, ledgerId);
-      return updated;
+      return nextOrder;
     });
-  }, [activeUserId, currency, ledgerId, persistToCloudLedger, savingsGoals, transactions, user]);
+  }, [activeUserId, categories, currency, ledgerId, persistToCloudLedger, savingsGoals, transactions, user]);
 
   const reorderCategory = useCallback((type: TransactionType, name: string, targetIndex: number) => {
-    setCategories(prev => {
-      const names = Object.keys(prev[type] || {});
+    setCategoryOrder(prevOrder => {
+      const names = orderedCategoryNames(categories[type] || {}, prevOrder[type] || []);
       const fromIndex = names.indexOf(name);
-      if (fromIndex < 0 || targetIndex < 0 || targetIndex >= names.length || fromIndex === targetIndex) return prev;
+      if (fromIndex < 0 || targetIndex < 0 || targetIndex >= names.length || fromIndex === targetIndex) return prevOrder;
 
       const reorderedNames = [...names];
       const [moved] = reorderedNames.splice(fromIndex, 1);
       reorderedNames.splice(targetIndex, 0, moved);
+      const nextOrder = { ...prevOrder, [type]: reorderedNames };
+      storageService.saveCategoryOrder(activeUserId, nextOrder);
+      storageService.saveCategoryOrder(ledgerId, nextOrder);
+
       const reordered: Record<string, string[]> = {};
-      reorderedNames.forEach(key => { reordered[key] = prev[type][key]; });
-      const updated = { ...prev, [type]: reordered };
+      reorderedNames.forEach(key => { reordered[key] = categories[type][key]; });
+      const updated = { ...categories, [type]: reordered };
+      setCategories(updated);
       storageService.saveLocalCategories(activeUserId, updated);
       storageService.saveLocalCategories(ledgerId, updated);
       if (user) storageService.saveCloudUserProfile(user.id, { categories: updated }).catch(() => {});
       persistToCloudLedger(transactions, updated, savingsGoals, currency, ledgerId);
-      return updated;
+      return nextOrder;
     });
-  }, [activeUserId, currency, ledgerId, persistToCloudLedger, savingsGoals, transactions, user]);
+  }, [activeUserId, categories, currency, ledgerId, persistToCloudLedger, savingsGoals, transactions, user]);
 
   const moveSubcategory = useCallback((type: TransactionType, category: string, subcategory: string, direction: 'up' | 'down') => {
     setCategories(prev => {
@@ -1181,10 +1245,38 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
   }, [activeUserId, currency, ledgerId, persistToCloudLedger, savingsGoals, transactions, user]);
 
+
+  const setSpendingRule = useCallback((key: string, bucket: 'need' | 'want' | null) => {
+    setSpendingClassification(prev => {
+      const rules = { ...prev.rules };
+      if (bucket === null) delete rules[key];
+      else rules[key] = bucket;
+      const next = { rules, updatedAt: new Date().toISOString() };
+      storageService.saveSpendingClassification(activeUserId, next);
+      storageService.saveSpendingClassification(ledgerId, next);
+      return next;
+    });
+  }, [activeUserId, ledgerId]);
+
+  const setSpendingRulesBulk = useCallback((rules: Record<string, 'need' | 'want'>) => {
+    const next = { rules: { ...rules }, updatedAt: new Date().toISOString() };
+    setSpendingClassification(next);
+    storageService.saveSpendingClassification(activeUserId, next);
+    storageService.saveSpendingClassification(ledgerId, next);
+  }, [activeUserId, ledgerId]);
+
   const resetDefaultCategories = useCallback(() => {
     setCategories(DEFAULT_CATEGORIES);
+    const defaultOrder: CategoryOrder = {
+      income: Object.keys(DEFAULT_CATEGORIES.income),
+      expense: Object.keys(DEFAULT_CATEGORIES.expense),
+      investment: Object.keys(DEFAULT_CATEGORIES.investment)
+    };
+    setCategoryOrder(defaultOrder);
     storageService.saveLocalCategories(activeUserId, DEFAULT_CATEGORIES);
     storageService.saveLocalCategories(ledgerId, DEFAULT_CATEGORIES);
+    storageService.saveCategoryOrder(activeUserId, defaultOrder);
+    storageService.saveCategoryOrder(ledgerId, defaultOrder);
     if (user) {
       storageService.saveCloudUserProfile(user.id, { categories: DEFAULT_CATEGORIES }).catch(() => {});
     }
@@ -1405,7 +1497,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setCurrentMonth,
     transactions,
     categories,
+    categoryOrder,
+    getOrderedCategoryNames,
     savingsGoals,
+    spendingClassification,
+    setSpendingRule,
+    setSpendingRulesBulk,
     currency,
     setCurrency,
     addTransaction,
@@ -1474,7 +1571,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     currentMonth,
     transactions,
     categories,
+    categoryOrder,
+    getOrderedCategoryNames,
     savingsGoals,
+    spendingClassification,
+    setSpendingRule,
+    setSpendingRulesBulk,
     currency,
     setCurrency,
     addTransaction,

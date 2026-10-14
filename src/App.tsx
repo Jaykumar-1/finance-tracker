@@ -17,9 +17,10 @@ import { MultiDeviceModal } from './components/MultiDeviceModal';
 import { ExcelImportModal } from './components/ExcelImportModal';
 import { LockScreen } from './components/LockScreen';
 import { ToastContainer } from './components/ToastContainer';
+import { Plus } from 'lucide-react';
 
 const MainLayout: React.FC = () => {
-  const { activePage, isUnlocked } = useFinance();
+  const { activePage, isUnlocked, openTxModal } = useFinance();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const renderActivePage = () => {
@@ -57,10 +58,20 @@ const MainLayout: React.FC = () => {
       <Navbar onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)} />
       <div className="flex-1 flex w-full">
         <Sidebar isMobileOpen={isMobileMenuOpen} onCloseMobile={() => setIsMobileMenuOpen(false)} />
-        <main className="flex-1 p-2.5 sm:p-4 md:p-7 max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden">
+        <main className="flex-1 p-2.5 sm:p-4 md:p-7 max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden animate-fade-in-up">
           {renderActivePage()}
         </main>
       </div>
+
+      {/* Floating Action Button — quick add transaction */}
+      <button
+        onClick={() => openTxModal('expense')}
+        title="Add transaction"
+        aria-label="Add transaction"
+        className="fab-primary fixed bottom-5 right-5 z-40 w-14 h-14 rounded-2xl flex items-center justify-center text-white md:bottom-7 md:right-7"
+      >
+        <Plus className="w-6 h-6" strokeWidth={2.5} />
+      </button>
 
       {/* Modals & Portals */}
       <TransactionModal />

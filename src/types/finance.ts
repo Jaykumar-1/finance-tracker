@@ -1,6 +1,6 @@
 export type TransactionType = 'income' | 'expense' | 'investment';
 
-export type AccountType = 'Cash' | 'Bank account' | 'UPI' | 'Credit card' | 'Savings' | 'Demat / Brokerage' | 'Other';
+export type AccountType = 'Cash' | 'Bank account' | 'UPI' | 'Credit card' | 'Savings' | 'Demat / Brokerage' | 'Crypto wallet' | 'Other';
 
 export interface Transaction {
   id: string;
@@ -28,6 +28,27 @@ export interface CategoryConfig {
   income: CategoryStructure;
   expense: CategoryStructure;
   investment: CategoryStructure;
+}
+
+/** Explicit order of category names per type (survives Firestore map reordering). */
+export interface CategoryOrder {
+  income: string[];
+  expense: string[];
+  investment: string[];
+}
+
+/**
+ * User-defined need vs want mapping for expense categories/subcategories.
+ * Keys are "Category" or "Category||Subcategory".
+ * Investment transactions are always treated as 'investment'.
+ * Income is ignored for this analysis.
+ */
+export type SpendingBucket = 'need' | 'want' | 'investment' | 'unclassified';
+
+export interface SpendingClassification {
+  /** Map of "Category" or "Category||Subcategory" -> 'need' | 'want' */
+  rules: Record<string, 'need' | 'want'>;
+  updatedAt?: string;
 }
 
 export interface MonthlySavingsGoal {
@@ -64,6 +85,8 @@ export interface CloudLedger {
   name?: string;
   currency: string;
   categories: CategoryConfig;
+  categoryOrder?: CategoryOrder;
+  spendingClassification?: SpendingClassification;
   savingsGoals: MonthlySavingsGoal[];
   transactions: Transaction[];
   /** IDs removed on another device; kept as tombstones so real-time sync does not resurrect deletes. */
@@ -98,6 +121,8 @@ export interface FinanceDataBackup {
   ledgerId?: string;
   currency: string;
   categories: CategoryConfig;
+  categoryOrder?: CategoryOrder;
   transactions: Transaction[];
   savingsGoals: MonthlySavingsGoal[];
+  spendingClassification?: SpendingClassification;
 }

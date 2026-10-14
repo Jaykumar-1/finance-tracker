@@ -1,12 +1,13 @@
 {
-  "name": "react-example",
+  "name": "my-finance-tracker",
   "private": true,
-  "version": "0.6.0",
+  "version": "0.9.0",
   "type": "module",
+  "description": "Personal finance tracker \u2014 expenses, income, investments, savings goals, multi-device sync & Excel import",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build && esbuild server.ts --platform=node --format=esm --outfile=server.js",
-    "start": "node server.ts",
+    "start": "node server.js",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"

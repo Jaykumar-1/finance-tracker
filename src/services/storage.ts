@@ -1,4 +1,4 @@
-import { CategoryConfig, CloudLedger, FinanceDataBackup, MonthlySavingsGoal, Transaction, UserProfile } from '../types/finance';
+import { CategoryConfig, CategoryOrder, CloudLedger, FinanceDataBackup, MonthlySavingsGoal, SpendingClassification, Transaction, UserProfile } from '../types/finance';
 import { DEFAULT_CATEGORIES } from '../utils/constants';
 import { db } from './firebase';
 import {
@@ -21,6 +21,8 @@ const STORAGE_KEYS = {
   USER: 'myfinance_user_profile',
   TRANSACTIONS: (userId: string) => `myfinance_${userId}_transactions`,
   CATEGORIES: (userId: string) => `myfinance_${userId}_categories`,
+  CATEGORY_ORDER: (userId: string) => `myfinance_${userId}_category_order`,
+  SPENDING_CLASS: (userId: string) => `myfinance_${userId}_spending_class`,
   GOALS: (userId: string) => `myfinance_${userId}_savings_goals`,
   SYNC_QUEUE: (userId: string) => `myfinance_${userId}_sync_queue`,
   MIGRATION_FLAG: (userId: string) => `myfinance_${userId}_migrated_v4`
@@ -101,6 +103,46 @@ export class FinanceStorageService {
 
   public saveLocalCategories(userId: string, categories: CategoryConfig): void {
     safeSetItem(STORAGE_KEYS.CATEGORIES(userId), JSON.stringify(categories));
+  }
+
+  public loadCategoryOrder(userId: string): CategoryOrder {
+    try {
+      const raw = safeGetItem(STORAGE_KEYS.CATEGORY_ORDER(userId));
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return {
+          income: Array.isArray(parsed.income) ? parsed.income : [],
+          expense: Array.isArray(parsed.expense) ? parsed.expense : [],
+          investment: Array.isArray(parsed.investment) ? parsed.investment : []
+        };
+      }
+    } catch { /* ignore */ }
+    // Derive from current category keys
+    const cats = this.loadLocalCategories(userId);
+    return {
+      income: Object.keys(cats.income || {}),
+      expense: Object.keys(cats.expense || {}),
+      investment: Object.keys(cats.investment || {})
+    };
+  }
+
+  public saveCategoryOrder(userId: string, order: CategoryOrder): void {
+    safeSetItem(STORAGE_KEYS.CATEGORY_ORDER(userId), JSON.stringify(order));
+  }
+
+  public loadSpendingClassification(userId: string): SpendingClassification {
+    try {
+      const raw = safeGetItem(STORAGE_KEYS.SPENDING_CLASS(userId));
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return { rules: parsed.rules || {}, updatedAt: parsed.updatedAt };
+      }
+    } catch { /* ignore */ }
+    return { rules: {} };
+  }
+
+  public saveSpendingClassification(userId: string, data: SpendingClassification): void {
+    safeSetItem(STORAGE_KEYS.SPENDING_CLASS(userId), JSON.stringify(data));
   }
 
   public loadLocalTransactions(userId: string): Transaction[] {

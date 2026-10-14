@@ -25,6 +25,7 @@ export const TransactionModal: React.FC = () => {
     modalPrefillDate,
     editingTransaction,
     categories,
+    getOrderedCategoryNames,
     currency,
     addTransaction,
     updateTransaction,
@@ -44,7 +45,7 @@ export const TransactionModal: React.FC = () => {
   const [description, setDescription] = useState<string>('');
 
   const setDefaultsForNewTransaction = (newType: TransactionType, newDate: string) => {
-    const typeCats = Object.keys(categories[newType] || {});
+    const typeCats = getOrderedCategoryNames(newType);
     const defaultCat = typeCats[0] || '';
     const subList = categories[newType]?.[defaultCat] || [];
 
@@ -77,7 +78,7 @@ export const TransactionModal: React.FC = () => {
   }, [isTxModalOpen, modalTxType, modalPrefillDate, editingTransaction, categories]);
 
   const handleTypeChange = (newType: TransactionType) => {
-    const typeCats = Object.keys(categories[newType] || {});
+    const typeCats = getOrderedCategoryNames(newType);
     const defaultCat = typeCats[0] || '';
     const subList = categories[newType]?.[defaultCat] || [];
     setType(newType);
@@ -91,7 +92,7 @@ export const TransactionModal: React.FC = () => {
     setSubcategory(subList[0] || '');
   };
 
-  const availableCategories = Object.keys(categories[type] || {});
+  const availableCategories = getOrderedCategoryNames(type);
   const availableSubcategories = category ? categories[type]?.[category] || [] : [];
 
   const dayTransactions = useMemo(() => {

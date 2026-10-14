@@ -49,6 +49,7 @@ export const TransactionsPage: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<'all' | TransactionType>('all');
   const [monthFilter, setMonthFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [subcategoryFilter, setSubcategoryFilter] = useState<string>('all');
   const [accountFilter, setAccountFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc'>('date-desc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -84,6 +85,15 @@ export const TransactionsPage: React.FC = () => {
     return cats.sort();
   }, [transactions]);
 
+  // Extract unique subcategories (optionally scoped to selected category)
+  const availableSubcategories = useMemo(() => {
+    const pool = categoryFilter === 'all'
+      ? transactions
+      : transactions.filter(t => t.category === categoryFilter);
+    const subs = Array.from(new Set(pool.map(t => t.subcategory).filter(Boolean) as string[]));
+    return subs.sort();
+  }, [transactions, categoryFilter]);
+
   // Extract unique accounts
   const availableAccounts = useMemo(() => {
     const accs = Array.from(new Set(transactions.map(t => t.account).filter(Boolean)));
@@ -99,6 +109,7 @@ export const TransactionsPage: React.FC = () => {
         if (typeFilter !== 'all' && tx.type !== typeFilter) return false;
         if (monthFilter !== 'all' && getMonthKey(tx.date) !== monthFilter) return false;
         if (categoryFilter !== 'all' && tx.category !== categoryFilter) return false;
+        if (subcategoryFilter !== 'all' && (tx.subcategory || '') !== subcategoryFilter) return false;
         if (accountFilter !== 'all' && tx.account !== accountFilter) return false;
 
         if (q) {
@@ -115,7 +126,7 @@ export const TransactionsPage: React.FC = () => {
         if (sortBy === 'amount-asc') return a.amount - b.amount;
         return 0;
       });
-  }, [transactions, typeFilter, monthFilter, categoryFilter, accountFilter, search, sortBy]);
+  }, [transactions, typeFilter, monthFilter, categoryFilter, subcategoryFilter, accountFilter, search, sortBy]);
 
   // Pagination
   const totalPages = Math.ceil(filtered.length / itemsPerPage) || 1;
@@ -330,6 +341,7 @@ export const TransactionsPage: React.FC = () => {
             value={categoryFilter}
             onChange={e => {
               setCategoryFilter(e.target.value);
+              setSubcategoryFilter('all');
               setCurrentPage(1);
             }}
             className="w-full px-3 py-2 rounded-xl bg-[#0d1728] border border-[#26344b] text-xs font-semibold text-[#c8d4e5] focus:outline-none focus:border-blue-500"
@@ -338,6 +350,25 @@ export const TransactionsPage: React.FC = () => {
             {availableCategories.map(cat => (
               <option key={cat} value={cat}>
                 {cat}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-[11px] font-semibold text-[#71839d] shrink-0">Sub-Category:</span>
+          <select
+            value={subcategoryFilter}
+            onChange={e => {
+              setSubcategoryFilter(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="bg-[#0d1728] border border-[#26344b] text-xs font-medium text-[#c8d4e5] rounded-lg px-2.5 py-1.5 focus:outline-none max-w-[160px]"
+          >
+            <option value="all">All Sub-Categories</option>
+            {availableSubcategories.map(sub => (
+              <option key={sub} value={sub}>
+                {sub}
               </option>
             ))}
           </select>

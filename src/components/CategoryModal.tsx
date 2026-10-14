@@ -22,6 +22,7 @@ export const CategoryModal: React.FC = () => {
     isCategoryModalOpen,
     closeCategoryModal,
     categories,
+    getOrderedCategoryNames,
     saveCategory,
     deleteCategory,
     saveSubcategory,
@@ -49,7 +50,7 @@ export const CategoryModal: React.FC = () => {
   const didDragRef = useRef(false);
   const dragStartPoint = useRef({ x: 0, y: 0 });
 
-  const currentCategories = Object.keys(categories[activeType] || {});
+  const currentCategories = getOrderedCategoryNames(activeType);
   const currentSubcategories = selectedCat ? categories[activeType]?.[selectedCat] || [] : [];
 
   useEffect(() => {
