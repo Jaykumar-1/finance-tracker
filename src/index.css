@@ -298,8 +298,11 @@ input:focus, select:focus, textarea:focus {
     font-size: 16px !important;
   }
 
+  /* `overflow-x: hidden` creates a scroll container and can break sticky bars.
+     `clip` prevents horizontal bleed without changing the sticky scroll ancestor. */
   main {
-    overflow-x: hidden;
+    overflow-x: clip;
+    min-width: 0;
   }
 
   .overflow-x-auto {
@@ -439,7 +442,30 @@ main h1, main h2, main h3, main [data-section-title] { scroll-margin-top: 100px;
   scroll-margin-top: 84px;
 }
 @media (max-width: 639px) {
-  .finance-sticky-bar { top: 56px; }
+  .finance-sticky-bar {
+    top: 56px;
+    z-index: 45;
+    gap: 0.5rem;
+    padding: 0.625rem;
+    border-radius: 1rem;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.24);
+  }
+
+  /* Keep month controls on one compact row on narrow screens. */
+  .finance-sticky-bar [data-sticky-controls] {
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: nowrap;
+    gap: 0.4rem;
+  }
+
+  .finance-sticky-bar h1,
+  .finance-sticky-bar h2,
+  .finance-sticky-bar h3 {
+    min-width: 0 !important;
+    white-space: nowrap;
+    font-size: 0.875rem;
+  }
 }
 @media (min-width: 640px) and (max-width: 767px) {
   .finance-sticky-bar { top: 64px; }
