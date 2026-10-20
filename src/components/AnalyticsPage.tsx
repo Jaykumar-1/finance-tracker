@@ -652,7 +652,7 @@ export const AnalyticsPage: React.FC = () => {
       </div>
 
       {/* Period + filters */}
-      <div className="glass-card p-3.5 rounded-2xl space-y-3">
+      <div data-sticky-action-bar className="finance-sticky-bar glass-card p-3.5 rounded-2xl space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <button

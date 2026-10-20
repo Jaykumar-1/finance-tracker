@@ -72,6 +72,7 @@ export const CategoryModal: React.FC = () => {
     dragStartPoint.current = { x: event.clientX, y: event.clientY };
     didDragRef.current = false;
 
+    try { (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId); } catch { /* capture may be unsupported */ }
     dragTimer.current = window.setTimeout(() => {
       didDragRef.current = true;
       draggingRef.current = item;
@@ -109,7 +110,7 @@ export const CategoryModal: React.FC = () => {
     const point = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null;
     const item = point?.closest<HTMLElement>(`[data-reorder-kind="${kind}"]`);
     const itemId = item?.dataset.reorderId;
-    if (itemId) setDragOverItem(itemId);
+    if (itemId) { dragOverRef.current = itemId; setDragOverItem(itemId); }
   };
 
   const finishDrag = (event: React.PointerEvent) => {
@@ -321,7 +322,7 @@ export const CategoryModal: React.FC = () => {
                           <button
                             type="button"
                             onPointerDown={e => { e.stopPropagation(); beginHoldDrag('category', cat, e); }}
-                            onPointerUp={e => { e.stopPropagation(); if (!draggingRef.current) cancelHoldDrag(); }}
+                            onPointerUp={e => { e.stopPropagation(); if (draggingRef.current) finishDrag(e); else cancelHoldDrag(); }}
                             onPointerCancel={e => { e.stopPropagation(); cancelHoldDrag(); }}
                             style={{ touchAction: 'none' }}
                             className={`p-1.5 mr-1 rounded-md text-[#62738a] hover:text-blue-300 hover:bg-[#18263b] shrink-0 cursor-grab ${draggingItem === cat ? 'text-blue-300 cursor-grabbing' : ''}`}
@@ -424,7 +425,7 @@ export const CategoryModal: React.FC = () => {
                           <button
                             type="button"
                             onPointerDown={e => { e.stopPropagation(); beginHoldDrag('subcategory', sub, e); }}
-                            onPointerUp={e => { e.stopPropagation(); if (!draggingRef.current) cancelHoldDrag(); }}
+                            onPointerUp={e => { e.stopPropagation(); if (draggingRef.current) finishDrag(e); else cancelHoldDrag(); }}
                             onPointerCancel={e => { e.stopPropagation(); cancelHoldDrag(); }}
                             style={{ touchAction: 'none' }}
                             className={`p-1.5 mr-1 rounded-md text-[#62738a] hover:text-blue-300 hover:bg-[#18263b] shrink-0 cursor-grab ${draggingItem === sub ? 'text-blue-300 cursor-grabbing' : ''}`}

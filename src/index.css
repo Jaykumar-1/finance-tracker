@@ -402,3 +402,48 @@ input:focus, select:focus, textarea:focus {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Refined application-wide visual system */
+:root { color-scheme: dark; scroll-behavior: smooth; }
+body {
+  background-image: radial-gradient(ellipse at 12% -10%, rgba(37, 99, 235, 0.10), transparent 36%),
+                    radial-gradient(ellipse at 95% 12%, rgba(16, 185, 129, 0.055), transparent 28%),
+                    linear-gradient(180deg, #090f1a 0%, #080e18 100%);
+  background-attachment: fixed;
+}
+button, a, input, select, textarea { transition-timing-function: cubic-bezier(.2,.7,.2,1); }
+button:not(:disabled) { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid rgba(96, 165, 250, .9); outline-offset: 2px;
+}
+.glass-card, .stat-card, .analytics-month-card {
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .13), inset 0 1px 0 rgba(255,255,255,.025);
+}
+main h1, main h2, main h3, main [data-section-title] { scroll-margin-top: 100px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+
+/* Page-level action/filter bars remain pinned below the global navbar. */
+.finance-sticky-bar {
+  position: sticky;
+  top: 72px;
+  z-index: 35;
+  isolation: isolate;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+  transition: box-shadow 220ms ease, border-color 220ms ease, background-color 220ms ease;
+  scroll-margin-top: 84px;
+}
+@media (max-width: 639px) {
+  .finance-sticky-bar { top: 56px; }
+}
+@media (min-width: 640px) and (max-width: 767px) {
+  .finance-sticky-bar { top: 64px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .finance-sticky-bar { transition: none; }
+}

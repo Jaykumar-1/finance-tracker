@@ -287,6 +287,28 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [savingsGoals, setSavingsGoals] = useState<MonthlySavingsGoal[]>(() => storageService.loadLocalSavingsGoals(activeUserId));
   const [currency, setCurrencyState] = useState<string>(user?.currency || 'INR');
 
+  // Keep independent tabs in the same browser profile in sync when local cache
+  // values are changed elsewhere. Incognito and other devices use Firebase below.
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (!event.key || !event.key.startsWith('myfinance_')) return;
+      const ownerKey = activeUserId;
+      if (event.key === `myfinance_${ownerKey}_transactions`) {
+        setTransactions(storageService.loadLocalTransactions(ownerKey));
+      } else if (event.key === `myfinance_${ownerKey}_categories`) {
+        setCategories(storageService.loadLocalCategories(ownerKey));
+      } else if (event.key === `myfinance_${ownerKey}_category_order`) {
+        setCategoryOrder(storageService.loadCategoryOrder(ownerKey));
+      } else if (event.key === `myfinance_${ownerKey}_spending_class`) {
+        setSpendingClassification(storageService.loadSpendingClassification(ownerKey));
+      } else if (event.key === `myfinance_${ownerKey}_savings_goals`) {
+        setSavingsGoals(storageService.loadLocalSavingsGoals(ownerKey));
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [activeUserId]);
+
   // Cloud initialization and sync guards
   const [cloudLoading, setCloudLoading] = useState<boolean>(true);
   const [cloudInitialized, setCloudInitialized] = useState<boolean>(false);
@@ -360,7 +382,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     goals = savingsGoals,
     curr = currency,
     lid = ledgerId,
-    deletedIds = deletedTransactionIds
+    deletedIds = deletedTransactionIds,
+    classification = spendingClassification,
+    order = categoryOrder
   ) => {
     if (cloudSyncTimeoutRef.current) {
       clearTimeout(cloudSyncTimeoutRef.current);
@@ -379,6 +403,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           ownerUid: user?.id,
           currency: curr,
           categories: cats,
+          categoryOrder: order,
+          spendingClassification: classification,
           savingsGoals: goals,
           transactions: txs,
           deletedTransactionIds: deletedIds,
@@ -412,7 +438,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         console.warn('Cloud Ledger auto-sync notice:', e);
       }
     }, 600);
-  }, [categories, currency, deletedTransactionIds, ledgerId, savingsGoals, transactions]);
+  }, [categories, categoryOrder, currency, deletedTransactionIds, ledgerId, savingsGoals, spendingClassification, transactions, user]);
 
   // Online / Offline status detector
   useEffect(() => {
@@ -505,8 +531,25 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           storageService.saveLocalTransactions(targetId, remoteTxs);
           storageService.saveLocalTransactions('main', remoteTxs);
           if (cloudLedger.categories) {
-            setCategories(cloudLedger.categories);
             storageService.saveLocalCategories(targetId, cloudLedger.categories);
+            const normalizedCategories = storageService.loadLocalCategories(targetId);
+            setCategories(normalizedCategories);
+            const normalizedOrder = storageService.loadCategoryOrder(targetId);
+            const needsCategoryMigration = JSON.stringify(normalizedCategories) !== JSON.stringify(cloudLedger.categories)
+              || JSON.stringify(normalizedOrder) !== JSON.stringify(cloudLedger.categoryOrder || normalizedOrder);
+            if (needsCategoryMigration) {
+              const migratedLedger = { ...cloudLedger, categories: normalizedCategories, categoryOrder: normalizedOrder, updatedAt: new Date().toISOString() };
+              await storageService.saveCloudLedger(targetId, migratedLedger);
+            }
+          }
+          if (cloudLedger.categoryOrder) {
+            const normalizedOrder = storageService.loadCategoryOrder(targetId);
+            setCategoryOrder(normalizedOrder);
+            storageService.saveCategoryOrder(targetId, normalizedOrder);
+          }
+          if (cloudLedger.spendingClassification) {
+            setSpendingClassification(cloudLedger.spendingClassification);
+            storageService.saveSpendingClassification(targetId, cloudLedger.spendingClassification);
           }
           if (cloudLedger.savingsGoals) {
             setSavingsGoals(cloudLedger.savingsGoals);
@@ -530,6 +573,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
               ownerUid: user.id,
               currency: currency || 'INR',
               categories: localCats,
+              categoryOrder: storageService.loadCategoryOrder(targetId),
+              spendingClassification: storageService.loadSpendingClassification(targetId),
               savingsGoals: localGoals,
               transactions: localTxs,
               updatedAt: new Date().toISOString()
@@ -576,8 +621,21 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
             storageService.saveLocalTransactions('main', remoteTxs);
           }
           if (updatedLedger.categories) {
-            setCategories(updatedLedger.categories);
             storageService.saveLocalCategories(targetId, updatedLedger.categories);
+            const normalizedCategories = storageService.loadLocalCategories(targetId);
+            setCategories(normalizedCategories);
+            if (JSON.stringify(normalizedCategories) !== JSON.stringify(updatedLedger.categories)) {
+              storageService.saveCloudLedger(targetId, { ...updatedLedger, categories: normalizedCategories, categoryOrder: storageService.loadCategoryOrder(targetId), updatedAt: new Date().toISOString() }).catch(() => {});
+            }
+          }
+          if (updatedLedger.categoryOrder) {
+            const normalizedOrder = storageService.loadCategoryOrder(targetId);
+            setCategoryOrder(normalizedOrder);
+            storageService.saveCategoryOrder(targetId, normalizedOrder);
+          }
+          if (updatedLedger.spendingClassification) {
+            setSpendingClassification(updatedLedger.spendingClassification);
+            storageService.saveSpendingClassification(targetId, updatedLedger.spendingClassification);
           }
           if (updatedLedger.savingsGoals) {
             setSavingsGoals(updatedLedger.savingsGoals);
@@ -697,6 +755,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (fetched.categories) {
           setCategories(fetched.categories);
           storageService.saveLocalCategories(finalId, fetched.categories);
+        }
+        if (fetched.categoryOrder) {
+          setCategoryOrder(fetched.categoryOrder);
+          storageService.saveCategoryOrder(finalId, fetched.categoryOrder);
+        }
+        if (fetched.spendingClassification) {
+          setSpendingClassification(fetched.spendingClassification);
+          storageService.saveSpendingClassification(finalId, fetched.spendingClassification);
         }
         if (fetched.savingsGoals) {
           setSavingsGoals(fetched.savingsGoals);
@@ -1065,6 +1131,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const next = { ...prevOrder, [type]: list };
       storageService.saveCategoryOrder(activeUserId, next);
       storageService.saveCategoryOrder(ledgerId, next);
+      if (user) storageService.saveCloudUserProfile(user.id, { categoryOrder: next }).catch(() => {});
+      persistToCloudLedger(transactions, categories, savingsGoals, currency, ledgerId, deletedTransactionIds, spendingClassification, next);
       return next;
     });
 
@@ -1090,6 +1158,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const next = { ...prevOrder, [type]: list };
       storageService.saveCategoryOrder(activeUserId, next);
       storageService.saveCategoryOrder(ledgerId, next);
+      if (user) storageService.saveCloudUserProfile(user.id, { categoryOrder: next }).catch(() => {});
+      persistToCloudLedger(transactions, categories, savingsGoals, currency, ledgerId, deletedTransactionIds, spendingClassification, next);
       return next;
     });
     showToast(`Category "${name}" deleted.`, 'info');
@@ -1155,7 +1225,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setCategoryOrder(order);
     storageService.saveCategoryOrder(activeUserId, order);
     storageService.saveCategoryOrder(ledgerId, order);
-  }, [activeUserId, ledgerId]);
+    if (user) storageService.saveCloudUserProfile(user.id, { categoryOrder: order }).catch(() => {});
+    persistToCloudLedger(transactions, categories, savingsGoals, currency, ledgerId, deletedTransactionIds, spendingClassification, order);
+  }, [activeUserId, categories, currency, deletedTransactionIds, ledgerId, persistToCloudLedger, savingsGoals, spendingClassification, transactions, user]);
 
   const moveCategory = useCallback((type: TransactionType, name: string, direction: 'up' | 'down') => {
     setCategoryOrder(prevOrder => {
@@ -1178,10 +1250,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       storageService.saveLocalCategories(activeUserId, updated);
       storageService.saveLocalCategories(ledgerId, updated);
       if (user) storageService.saveCloudUserProfile(user.id, { categories: updated }).catch(() => {});
-      persistToCloudLedger(transactions, updated, savingsGoals, currency, ledgerId);
+      persistToCloudLedger(transactions, updated, savingsGoals, currency, ledgerId, deletedTransactionIds, spendingClassification, nextOrder);
       return nextOrder;
     });
-  }, [activeUserId, categories, currency, ledgerId, persistToCloudLedger, savingsGoals, transactions, user]);
+  }, [activeUserId, categories, currency, deletedTransactionIds, ledgerId, persistToCloudLedger, savingsGoals, spendingClassification, transactions, user]);
 
   const reorderCategory = useCallback((type: TransactionType, name: string, targetIndex: number) => {
     setCategoryOrder(prevOrder => {
@@ -1203,10 +1275,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       storageService.saveLocalCategories(activeUserId, updated);
       storageService.saveLocalCategories(ledgerId, updated);
       if (user) storageService.saveCloudUserProfile(user.id, { categories: updated }).catch(() => {});
-      persistToCloudLedger(transactions, updated, savingsGoals, currency, ledgerId);
+      persistToCloudLedger(transactions, updated, savingsGoals, currency, ledgerId, deletedTransactionIds, spendingClassification, nextOrder);
       return nextOrder;
     });
-  }, [activeUserId, categories, currency, ledgerId, persistToCloudLedger, savingsGoals, transactions, user]);
+  }, [activeUserId, categories, currency, deletedTransactionIds, ledgerId, persistToCloudLedger, savingsGoals, spendingClassification, transactions, user]);
 
   const moveSubcategory = useCallback((type: TransactionType, category: string, subcategory: string, direction: 'up' | 'down') => {
     setCategories(prev => {
@@ -1254,16 +1326,20 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const next = { rules, updatedAt: new Date().toISOString() };
       storageService.saveSpendingClassification(activeUserId, next);
       storageService.saveSpendingClassification(ledgerId, next);
+      persistToCloudLedger(transactions, categories, savingsGoals, currency, ledgerId, deletedTransactionIds, next, categoryOrder);
+      if (user) storageService.saveCloudUserProfile(user.id, { spendingClassification: next }).catch(() => {});
       return next;
     });
-  }, [activeUserId, ledgerId]);
+  }, [activeUserId, categories, categoryOrder, currency, deletedTransactionIds, ledgerId, persistToCloudLedger, savingsGoals, transactions, user]);
 
   const setSpendingRulesBulk = useCallback((rules: Record<string, 'need' | 'want'>) => {
     const next = { rules: { ...rules }, updatedAt: new Date().toISOString() };
     setSpendingClassification(next);
     storageService.saveSpendingClassification(activeUserId, next);
     storageService.saveSpendingClassification(ledgerId, next);
-  }, [activeUserId, ledgerId]);
+    persistToCloudLedger(transactions, categories, savingsGoals, currency, ledgerId, deletedTransactionIds, next, categoryOrder);
+    if (user) storageService.saveCloudUserProfile(user.id, { spendingClassification: next }).catch(() => {});
+  }, [activeUserId, categories, categoryOrder, currency, deletedTransactionIds, ledgerId, persistToCloudLedger, savingsGoals, spendingClassification, transactions, user]);
 
   const resetDefaultCategories = useCallback(() => {
     setCategories(DEFAULT_CATEGORIES);
@@ -1278,11 +1354,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     storageService.saveCategoryOrder(activeUserId, defaultOrder);
     storageService.saveCategoryOrder(ledgerId, defaultOrder);
     if (user) {
-      storageService.saveCloudUserProfile(user.id, { categories: DEFAULT_CATEGORIES }).catch(() => {});
+      storageService.saveCloudUserProfile(user.id, { categories: DEFAULT_CATEGORIES, categoryOrder: defaultOrder }).catch(() => {});
     }
-    persistToCloudLedger(transactions, DEFAULT_CATEGORIES, savingsGoals, currency, ledgerId);
+    persistToCloudLedger(transactions, DEFAULT_CATEGORIES, savingsGoals, currency, ledgerId, deletedTransactionIds, spendingClassification, defaultOrder);
     showToast('Categories reset to standard defaults.', 'info');
-  }, [activeUserId, currency, ledgerId, persistToCloudLedger, savingsGoals, showToast, transactions, user]);
+  }, [activeUserId, currency, deletedTransactionIds, ledgerId, persistToCloudLedger, savingsGoals, showToast, spendingClassification, transactions, user]);
 
   // ==========================================
   // Savings Goals Operations
@@ -1320,7 +1396,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [activeUserId, categories, currency, ledgerId, persistToCloudLedger, showToast, transactions, user]);
 
   const getCurrentMonthGoal = useCallback((monthKeyParam?: string): MonthlySavingsGoal | undefined => {
-    const key = monthKeyParam || getMonthKey(currentMonth);
+    const key = monthKeyParam || getMonthKey(currentMonth.toISOString().slice(0, 10));
     return savingsGoals.find(g => g.monthKey === key);
   }, [currentMonth, savingsGoals]);
 

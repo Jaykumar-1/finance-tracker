@@ -301,7 +301,7 @@ export const Dashboard: React.FC = () => {
   return (
     <div className={`flex flex-col ${viewMode === 'fit' ? 'gap-3' : 'gap-5'}`}>
       {/* 1. Header & Month Navigator */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 bg-[#101a2b] p-3 md:p-4 rounded-2xl border border-[#26344b] shadow-md">
+      <div data-sticky-action-bar className="finance-sticky-bar flex flex-wrap items-center justify-between gap-2.5 bg-[#101a2b] p-3 md:p-4 rounded-2xl border border-[#26344b] shadow-md">
         {/* Month Switcher Controls */}
         <div className="flex flex-wrap items-center gap-2">
           <button

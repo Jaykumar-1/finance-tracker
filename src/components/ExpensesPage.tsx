@@ -162,7 +162,7 @@ export const ExpensesPage: React.FC = () => {
       </div>
 
       {/* Period Selector Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#101a2b] p-3.5 rounded-2xl border border-[#26344b]">
+      <div data-sticky-action-bar className="finance-sticky-bar flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#101a2b] p-3.5 rounded-2xl border border-[#26344b]">
         <div className="flex items-center gap-2">
           <button
             onClick={handlePrev}
@@ -388,7 +388,11 @@ export const ExpensesPage: React.FC = () => {
                       const max = Math.max(...trend.values, 1);
                       const x = 8 + (index * 84) / (trend.values.length - 1);
                       const y = 42 - (value / max) * 34;
-                      return <circle key={index} cx={x} cy={y} r="1.7" fill="currentColor" className="text-rose-400" />;
+                      return (
+                        <circle key={index} cx={x} cy={y} r="2.4" fill="currentColor" className="text-rose-400 cursor-pointer" tabIndex={0}>
+                          <title>{`${trend.labels[index] || `Point ${index + 1}`} · ${formatMoney(value, currency)}`}</title>
+                        </circle>
+                      );
                     })}
                   </svg>
                   <div className="grid grid-cols-6 text-[8px] text-[#596b84] text-center">

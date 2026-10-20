@@ -83,18 +83,43 @@ export class FinanceStorageService {
         return JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
       }
       const parsed = JSON.parse(raw);
-      const defaults = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
-      (['income', 'expense', 'investment'] as const).forEach(type => {
-        if (!parsed[type] || typeof parsed[type] !== 'object') {
-          parsed[type] = defaults[type];
-        } else {
+      const defaults = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)) as CategoryConfig;
+      (['income', 'investment'] as const).forEach(type => {
+        if (!parsed[type] || typeof parsed[type] !== 'object') parsed[type] = defaults[type];
+        else {
           Object.entries(defaults[type]).forEach(([cat, subcats]) => {
-            if (!Object.prototype.hasOwnProperty.call(parsed[type], cat)) {
-              parsed[type][cat] = subcats;
-            }
+            if (!Object.prototype.hasOwnProperty.call(parsed[type], cat)) parsed[type][cat] = subcats;
           });
         }
       });
+
+      // Expense categories are intentionally a closed, canonical list. Migrate
+      // old names into the new names and carry forward their subcategories without
+      // retaining duplicate legacy category labels.
+      const aliases: Record<string, keyof typeof DEFAULT_CATEGORIES.expense> = {
+        'Food & Dining': 'Food', 'Dining': 'Food', 'Groceries': 'Food',
+        'Transportation': 'Transport', 'Travel & Transport': 'Transport',
+        'Housing': 'Rent & Housing', 'Rent': 'Rent & Housing',
+        'Utilities': 'Utility & Bills', 'Utility and Bills': 'Utility & Bills', 'Utility & Billls': 'Utility & Bills',
+        'Household & Living': 'Household', 'Home & Household': 'Household',
+        'Medical': 'Health', 'Healthcare': 'Health',
+        'Learning': 'Education',
+        'Personal Care & Apparel': 'Personal (Apparel + Beauty)', 'Personal Care': 'Personal (Apparel + Beauty)', 'Shopping': 'Personal (Apparel + Beauty)',
+        'Social & Entertainment': 'Social & Lifestyle (Culture + Social)', 'Entertainment': 'Social & Lifestyle (Culture + Social)', 'Lifestyle': 'Social & Lifestyle (Culture + Social)',
+        'Gifts & Donation': 'Gift & Donation', 'Gifts': 'Gift & Donation', 'Donations': 'Gift & Donation',
+        'Family and Kids': 'Miscellaneous', 'Other': 'Miscellaneous', 'Others': 'Miscellaneous'
+      };
+      const oldExpense = parsed.expense && typeof parsed.expense === 'object' ? parsed.expense as Record<string, string[]> : {};
+      const migratedExpense = JSON.parse(JSON.stringify(defaults.expense)) as typeof DEFAULT_CATEGORIES.expense;
+      Object.entries(oldExpense).forEach(([oldName, subs]) => {
+        const canonical = (Object.prototype.hasOwnProperty.call(migratedExpense, oldName)
+          ? oldName
+          : aliases[oldName]) as keyof typeof DEFAULT_CATEGORIES.expense | undefined;
+        if (!canonical || !Array.isArray(subs)) return;
+        migratedExpense[canonical] = [...new Set([...(migratedExpense[canonical] || []), ...subs.filter((v): v is string => typeof v === 'string')])];
+      });
+      parsed.expense = migratedExpense;
+      safeSetItem(STORAGE_KEYS.CATEGORIES(userId), JSON.stringify(parsed));
       return parsed;
     } catch {
       return JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
@@ -110,9 +135,24 @@ export class FinanceStorageService {
       const raw = safeGetItem(STORAGE_KEYS.CATEGORY_ORDER(userId));
       if (raw) {
         const parsed = JSON.parse(raw);
+        const aliases: Record<string, string> = {
+          'Food & Dining': 'Food',
+          'Utility and Bills': 'Utility & Bills',
+          'Utility & Billls': 'Utility & Bills',
+          'Household & Living': 'Household',
+          'Personal Care & Apparel': 'Personal (Apparel + Beauty)',
+          'Social & Entertainment': 'Social & Lifestyle (Culture + Social)',
+          'Gifts & Donation': 'Gift & Donation',
+          'Family and Kids': 'Miscellaneous'
+        };
+        const rawExpense: string[] = Array.isArray(parsed.expense) ? parsed.expense as string[] : [];
+        const hasLegacyNames = rawExpense.some(name => Object.prototype.hasOwnProperty.call(aliases, name));
+        const migratedExpense = rawExpense.map((name: string) => aliases[name] || name);
+        const validExpense = [...new Set(migratedExpense)].filter(name => Object.prototype.hasOwnProperty.call(DEFAULT_CATEGORIES.expense, name));
+        const expense = hasLegacyNames ? Object.keys(DEFAULT_CATEGORIES.expense) : [...Object.keys(DEFAULT_CATEGORIES.expense).filter(name => !validExpense.includes(name)), ...validExpense];
         return {
           income: Array.isArray(parsed.income) ? parsed.income : [],
-          expense: Array.isArray(parsed.expense) ? parsed.expense : [],
+          expense,
           investment: Array.isArray(parsed.investment) ? parsed.investment : []
         };
       }
@@ -388,7 +428,7 @@ export class FinanceStorageService {
   /**
    * Saves User Profile, Categories, Savings Goals to /users/{uid}
    */
-  public async saveCloudUserProfile(uid: string, data: Partial<UserProfile> & { categories?: CategoryConfig; savingsGoals?: MonthlySavingsGoal[] }): Promise<void> {
+  public async saveCloudUserProfile(uid: string, data: Partial<UserProfile> & { categories?: CategoryConfig; categoryOrder?: CategoryOrder; spendingClassification?: SpendingClassification; savingsGoals?: MonthlySavingsGoal[] }): Promise<void> {
     if (!uid) return;
     try {
       const userDocRef = doc(db, 'users', uid);
@@ -497,7 +537,7 @@ export class FinanceStorageService {
    */
   public subscribeToUserProfile(
     uid: string,
-    onUpdate: (profile: Partial<UserProfile> & { categories?: CategoryConfig; savingsGoals?: MonthlySavingsGoal[] }) => void,
+    onUpdate: (profile: Partial<UserProfile> & { categories?: CategoryConfig; categoryOrder?: CategoryOrder; spendingClassification?: SpendingClassification; savingsGoals?: MonthlySavingsGoal[] }) => void,
     onError?: (err: Error) => void
   ): Unsubscribe {
     if (!uid) return () => {};
@@ -674,6 +714,8 @@ export class FinanceStorageService {
         name: ledgerData.name || 'Personal Finance Ledger',
         currency: ledgerData.currency || 'INR',
         categories: ledgerData.categories || DEFAULT_CATEGORIES,
+        categoryOrder: ledgerData.categoryOrder,
+        spendingClassification: ledgerData.spendingClassification,
         savingsGoals: Array.isArray(ledgerData.savingsGoals) ? ledgerData.savingsGoals : [],
         transactions: Array.isArray(ledgerData.transactions) ? ledgerData.transactions : [],
         deletedTransactionIds: Array.isArray(ledgerData.deletedTransactionIds) ? ledgerData.deletedTransactionIds : [],
@@ -732,6 +774,8 @@ export class FinanceStorageService {
           name: data.name || 'Personal Finance Ledger',
           currency: data.currency || 'INR',
           categories: data.categories || DEFAULT_CATEGORIES,
+          categoryOrder: data.categoryOrder,
+          spendingClassification: data.spendingClassification,
           savingsGoals: Array.isArray(data.savingsGoals) ? data.savingsGoals : [],
           transactions: Array.isArray(data.transactions) ? data.transactions : [],
           deletedTransactionIds: Array.isArray(data.deletedTransactionIds) ? data.deletedTransactionIds : [],
@@ -769,6 +813,8 @@ export class FinanceStorageService {
             name: data.name || 'Personal Finance Ledger',
             currency: data.currency || 'INR',
             categories: data.categories || DEFAULT_CATEGORIES,
+            categoryOrder: data.categoryOrder,
+            spendingClassification: data.spendingClassification,
             savingsGoals: Array.isArray(data.savingsGoals) ? data.savingsGoals : [],
             transactions: Array.isArray(data.transactions) ? data.transactions : [],
             deletedTransactionIds: Array.isArray(data.deletedTransactionIds) ? data.deletedTransactionIds : [],
