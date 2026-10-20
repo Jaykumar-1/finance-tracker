@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useFinance } from '../context/FinanceContext';
-import { SUPPORTED_CURRENCIES } from '../utils/constants';
 import {
   Menu,
-  Plus,
   User,
   ShieldCheck,
   Lock,
@@ -18,11 +16,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMobileMenu }) => {
   const {
     user,
     activePage,
-    currency,
-    setCurrency,
-    currentMonth,
-    openTxModal,
-    openGoalModal,
     openAuthModal,
     setActivePage,
     isSidebarHidden,
@@ -32,7 +25,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMobileMenu }) => {
   } = useFinance();
 
   const [isScrolled, setIsScrolled] = useState(false);
-  const monthLabel = currentMonth.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
 
   useEffect(() => {
     let frame = 0;
@@ -90,26 +82,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMobileMenu }) => {
 
       {/* Right section */}
       <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2.5 min-w-0">
-        <div className="hidden sm:flex items-center gap-2 rounded-xl border border-[#26344b] bg-[#101a2b]/80 px-2.5 py-1.5 text-[10px] sm:text-xs text-[#c8d4e5] whitespace-nowrap">
-          <span className="text-blue-300">◷</span>
-          <span>{monthLabel}</span>
-        </div>
-        {/* Currency Selector */}
-        <div className="hidden lg:block">
-          <select
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value)}
-            className="bg-[#101a2b] border border-[#26344b] text-xs font-semibold text-[#c8d4e5] rounded-lg px-2 py-1.5 focus:outline-none focus:border-blue-500"
-            title="Choose Currency"
-          >
-            {SUPPORTED_CURRENCIES.map(curr => (
-              <option key={curr.code} value={curr.code}>
-                {curr.symbol} {curr.code}
-              </option>
-            ))}
-          </select>
-        </div>
-
         {/* Privacy Lock Toggle Button */}
         {isUnlocked ? (
           <button
@@ -130,15 +102,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMobileMenu }) => {
             <span>Unlock Data</span>
           </button>
         )}
-
-        {/* Add Transaction Button */}
-        <button
-          onClick={() => openTxModal('expense')}
-          className="flex items-center gap-1.5 px-2.5 sm:px-3 md:px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-xs md:text-sm font-semibold shadow-md shadow-blue-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
-        >
-          <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">Add</span>
-        </button>
 
         {/* User Profile / Auth Button */}
         {user ? (
