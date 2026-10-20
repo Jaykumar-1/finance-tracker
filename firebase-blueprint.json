@@ -1,0 +1,95 @@
+{
+  "entities": {
+    "UsernameMapping": {
+      "title": "UsernameMapping",
+      "description": "Minimal mapping from username to Firebase Auth UID and canonical email for username login",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "username": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["uid", "email", "username"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile, configuration, categories, and settings",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "username": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "currency": { "type": "string" },
+        "authProvider": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "googleEmail": { "type": "string" },
+        "googleSheetId": { "type": "string" },
+        "googleSheetUrl": { "type": "string" },
+        "googleSheetTitle": { "type": "string" },
+        "isGoogleDriveLinked": { "type": "boolean" },
+        "lastDriveSyncAt": { "type": "string" },
+        "categories": { "type": "object" },
+        "savingsGoals": { "type": "array" }
+      },
+      "required": ["id", "displayName"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Individual financial income, expense, or investment record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["income", "expense", "investment"] },
+        "amount": { "type": "number" },
+        "category": { "type": "string" },
+        "subcategory": { "type": "string" },
+        "date": { "type": "string" },
+        "description": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "status": { "type": "string" },
+        "tags": { "type": "array" },
+        "isRecurring": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "type", "amount", "category", "date"]
+    },
+    "CloudLedger": {
+      "title": "CloudLedger",
+      "description": "Cross-device JSON ledger data accessible via direct shareable link",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "currency": { "type": "string" },
+        "categories": { "type": "object" },
+        "savingsGoals": { "type": "array" },
+        "transactions": { "type": "array" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id"]
+    }
+  },
+  "firestore": {
+    "/usernames/{username}": {
+      "schema": "UsernameMapping",
+      "description": "Stores minimum public lookup data to map a chosen username to Firebase Auth email and UID"
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Stores user settings, profile, and categories strictly scoped to user UID"
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Stores individual transactions as distinct documents in a subcollection under user UID"
+    },
+    "/ledgers/{ledgerId}": {
+      "schema": "CloudLedger",
+      "description": "Stores cross-device synchronized ledger JSON data accessible via direct link"
+    }
+  }
+}

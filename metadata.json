@@ -1,0 +1,6 @@
+{
+  "name": "My Finance - Personal Expense & Savings Tracker",
+  "description": "A personal finance app for tracking expenses, income, investments, setting monthly savings goals, multi-device sync, and offline support.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
