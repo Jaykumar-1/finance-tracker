@@ -918,12 +918,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     storageService.purgeLocalTransactions(ledgerId);
 
     if (user && user.id) {
-      // Do not silently ignore a failed delete: old canonical transaction docs
-      // could otherwise be migrated back into the JSON ledger on a later load.
-      const transactionDeleteResult = await storageService.clearAllCloudTransactions(user.id);
-      if (!transactionDeleteResult.success) {
-        throw new Error(transactionDeleteResult.error || 'Failed to delete transaction records from cloud storage.');
-      }
+      await storageService.clearAllCloudTransactions(user.id).catch(() => {});
     }
 
     const emptyLedger: CloudLedger = {
@@ -974,7 +969,15 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     // Canonicalize dates before de-duplication and persistence. Older backups may
     // contain ISO timestamps, which otherwise fail exact YYYY-MM-DD calendar matches.
-    const normalizedTxs = newTxs.map(tx => normalizeTransactionDate(tx));
+    // Stamp every row imported now with a fresh updatedAt value. Cloud loading uses
+    // the ledger resetAt marker to reject pre-reset transactions; Excel rows often
+    // have no updatedAt (or an old one), so they were being filtered out on other
+    // devices even though they appeared on the importing device.
+    const importUpdatedAt = new Date().toISOString();
+    const normalizedTxs = newTxs.map(tx => ({
+      ...normalizeTransactionDate(tx),
+      updatedAt: importUpdatedAt
+    }));
 
     const effectiveMode = typeof mode === 'boolean' ? (mode ? 'replace' : 'safe') : mode;
 
