@@ -58,7 +58,11 @@ const MainLayout: React.FC = () => {
       <Navbar onToggleMobileMenu={() => setIsMobileMenuOpen(prev => !prev)} />
       <div className="flex-1 flex w-full">
         <Sidebar isMobileOpen={isMobileMenuOpen} onCloseMobile={() => setIsMobileMenuOpen(false)} />
+<<<<<<< HEAD
         <main className="flex-1 p-2.5 sm:p-4 md:p-7 max-w-7xl mx-auto w-full min-w-0 overflow-x-clip animate-fade-in-up">
+=======
+        <main className="flex-1 p-2.5 sm:p-4 md:p-7 max-w-7xl mx-auto w-full min-w-0 overflow-x-hidden animate-fade-in-up">
+>>>>>>> ef174d7 (Update finance tracker)
           {renderActivePage()}
         </main>
       </div>

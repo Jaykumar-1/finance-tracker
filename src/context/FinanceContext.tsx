@@ -15,7 +15,11 @@ import { authService } from '../services/auth';
 import { storageService } from '../services/storage';
 import { DEFAULT_CATEGORIES } from '../utils/constants';
 import { getSampleSavingsGoals, getSampleTransactions } from '../utils/sampleData';
+<<<<<<< HEAD
 import { generateId, getMonthKey, normalizeTransactionDate, orderedCategoryNames, toIsoDate } from '../utils/formatters';
+=======
+import { generateId, getMonthKey, orderedCategoryNames, toIsoDate } from '../utils/formatters';
+>>>>>>> ef174d7 (Update finance tracker)
 import { getTransactionFingerprint } from '../services/excel';
 import confetti from 'canvas-confetti';
 
@@ -287,6 +291,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [savingsGoals, setSavingsGoals] = useState<MonthlySavingsGoal[]>(() => storageService.loadLocalSavingsGoals(activeUserId));
   const [currency, setCurrencyState] = useState<string>(user?.currency || 'INR');
 
+<<<<<<< HEAD
   // Keep independent tabs in the same browser profile in sync when local cache
   // values are changed elsewhere. Incognito and other devices use Firebase below.
   useEffect(() => {
@@ -309,6 +314,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return () => window.removeEventListener('storage', onStorage);
   }, [activeUserId]);
 
+=======
+>>>>>>> ef174d7 (Update finance tracker)
   // Cloud initialization and sync guards
   const [cloudLoading, setCloudLoading] = useState<boolean>(true);
   const [cloudInitialized, setCloudInitialized] = useState<boolean>(false);
@@ -382,9 +389,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     goals = savingsGoals,
     curr = currency,
     lid = ledgerId,
+<<<<<<< HEAD
     deletedIds = deletedTransactionIds,
     classification = spendingClassification,
     order = categoryOrder
+=======
+    deletedIds = deletedTransactionIds
+>>>>>>> ef174d7 (Update finance tracker)
   ) => {
     if (cloudSyncTimeoutRef.current) {
       clearTimeout(cloudSyncTimeoutRef.current);
@@ -403,8 +414,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           ownerUid: user?.id,
           currency: curr,
           categories: cats,
+<<<<<<< HEAD
           categoryOrder: order,
           spendingClassification: classification,
+=======
+>>>>>>> ef174d7 (Update finance tracker)
           savingsGoals: goals,
           transactions: txs,
           deletedTransactionIds: deletedIds,
@@ -438,7 +452,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         console.warn('Cloud Ledger auto-sync notice:', e);
       }
     }, 600);
+<<<<<<< HEAD
   }, [categories, categoryOrder, currency, deletedTransactionIds, ledgerId, savingsGoals, spendingClassification, transactions, user]);
+=======
+  }, [categories, currency, deletedTransactionIds, ledgerId, savingsGoals, transactions]);
+>>>>>>> ef174d7 (Update finance tracker)
 
   // Online / Offline status detector
   useEffect(() => {
@@ -519,8 +537,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           const remoteResetAt = cloudLedger.resetAt || null;
           if (remoteResetAt) lastFullEraseAtRef.current = remoteResetAt;
           const remoteTxs = remoteResetAt
+<<<<<<< HEAD
             ? (cloudLedger.transactions || []).map(normalizeTransactionDate).filter(tx => new Date(tx.updatedAt || 0).getTime() > new Date(remoteResetAt).getTime())
             : (cloudLedger.transactions || []).map(normalizeTransactionDate);
+=======
+            ? (cloudLedger.transactions || []).filter(tx => new Date(tx.updatedAt || 0).getTime() > new Date(remoteResetAt).getTime())
+            : (cloudLedger.transactions || []);
+>>>>>>> ef174d7 (Update finance tracker)
           // The cloud ledger is the canonical shared JSON document. Once it exists,
           // its snapshot is authoritative; merging stale local data here is what
           // previously caused deleted transactions to reappear.
@@ -531,6 +554,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           storageService.saveLocalTransactions(targetId, remoteTxs);
           storageService.saveLocalTransactions('main', remoteTxs);
           if (cloudLedger.categories) {
+<<<<<<< HEAD
             storageService.saveLocalCategories(targetId, cloudLedger.categories);
             const normalizedCategories = storageService.loadLocalCategories(targetId);
             setCategories(normalizedCategories);
@@ -550,6 +574,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           if (cloudLedger.spendingClassification) {
             setSpendingClassification(cloudLedger.spendingClassification);
             storageService.saveSpendingClassification(targetId, cloudLedger.spendingClassification);
+=======
+            setCategories(cloudLedger.categories);
+            storageService.saveLocalCategories(targetId, cloudLedger.categories);
+>>>>>>> ef174d7 (Update finance tracker)
           }
           if (cloudLedger.savingsGoals) {
             setSavingsGoals(cloudLedger.savingsGoals);
@@ -563,7 +591,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
             message: `Loaded ${cloudLedger.transactions?.length || 0} records from private cloud`
           }));
         } else if (isMounted) {
+<<<<<<< HEAD
           const localTxs = storageService.loadAnyLocalTransactions(targetId).map(normalizeTransactionDate);
+=======
+          const localTxs = storageService.loadAnyLocalTransactions(targetId);
+>>>>>>> ef174d7 (Update finance tracker)
           const localCats = storageService.loadLocalCategories(targetId);
           const localGoals = storageService.loadLocalSavingsGoals(targetId);
           if (localTxs.length > 0) {
@@ -573,8 +605,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
               ownerUid: user.id,
               currency: currency || 'INR',
               categories: localCats,
+<<<<<<< HEAD
               categoryOrder: storageService.loadCategoryOrder(targetId),
               spendingClassification: storageService.loadSpendingClassification(targetId),
+=======
+>>>>>>> ef174d7 (Update finance tracker)
               savingsGoals: localGoals,
               transactions: localTxs,
               updatedAt: new Date().toISOString()
@@ -609,8 +644,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
             // A reset marker is authoritative: any transaction older than the
             // reset belongs to the pre-erase dataset and must not be resurrected.
             const remoteTxs = remoteResetAt
+<<<<<<< HEAD
               ? updatedLedger.transactions.map(normalizeTransactionDate).filter(tx => new Date(tx.updatedAt || 0).getTime() > new Date(remoteResetAt).getTime())
               : updatedLedger.transactions.map(normalizeTransactionDate);
+=======
+              ? updatedLedger.transactions.filter(tx => new Date(tx.updatedAt || 0).getTime() > new Date(remoteResetAt).getTime())
+              : updatedLedger.transactions;
+>>>>>>> ef174d7 (Update finance tracker)
             // The cloud ledger is authoritative. Never merge the current device's
             // stale cache back into a realtime snapshot.
             setTransactions(remoteTxs);
@@ -621,6 +661,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
             storageService.saveLocalTransactions('main', remoteTxs);
           }
           if (updatedLedger.categories) {
+<<<<<<< HEAD
             storageService.saveLocalCategories(targetId, updatedLedger.categories);
             const normalizedCategories = storageService.loadLocalCategories(targetId);
             setCategories(normalizedCategories);
@@ -636,6 +677,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           if (updatedLedger.spendingClassification) {
             setSpendingClassification(updatedLedger.spendingClassification);
             storageService.saveSpendingClassification(targetId, updatedLedger.spendingClassification);
+=======
+            setCategories(updatedLedger.categories);
+            storageService.saveLocalCategories(targetId, updatedLedger.categories);
+>>>>>>> ef174d7 (Update finance tracker)
           }
           if (updatedLedger.savingsGoals) {
             setSavingsGoals(updatedLedger.savingsGoals);
@@ -756,6 +801,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           setCategories(fetched.categories);
           storageService.saveLocalCategories(finalId, fetched.categories);
         }
+<<<<<<< HEAD
         if (fetched.categoryOrder) {
           setCategoryOrder(fetched.categoryOrder);
           storageService.saveCategoryOrder(finalId, fetched.categoryOrder);
@@ -764,6 +810,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           setSpendingClassification(fetched.spendingClassification);
           storageService.saveSpendingClassification(finalId, fetched.spendingClassification);
         }
+=======
+>>>>>>> ef174d7 (Update finance tracker)
         if (fetched.savingsGoals) {
           setSavingsGoals(fetched.savingsGoals);
           storageService.saveLocalSavingsGoals(finalId, fetched.savingsGoals);
@@ -967,6 +1015,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return { addedCount: 0, skippedCount: 0, totalCount: 0 };
     }
 
+<<<<<<< HEAD
     // Canonicalize dates before de-duplication and persistence. Older backups may
     // contain ISO timestamps, which otherwise fail exact YYYY-MM-DD calendar matches.
     // Every newly imported row must also have a fresh updatedAt timestamp. The
@@ -979,11 +1028,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       updatedAt: importUpdatedAt
     }));
 
+=======
+>>>>>>> ef174d7 (Update finance tracker)
     const effectiveMode = typeof mode === 'boolean' ? (mode ? 'replace' : 'safe') : mode;
 
     let finalTxs: Transaction[];
     let addedTxs: Transaction[] = [];
     let skippedCount = 0;
+<<<<<<< HEAD
     let repairedExistingTimestamps = false;
 
     if (effectiveMode === 'replace') {
@@ -997,6 +1049,20 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const retainedTxs = transactions.filter(t => !incomingMonths.has(getMonthKey(t.date)));
       finalTxs = [...retainedTxs, ...normalizedTxs];
       addedTxs = normalizedTxs;
+=======
+
+    if (effectiveMode === 'replace') {
+      finalTxs = newTxs;
+      addedTxs = newTxs;
+      skippedCount = 0;
+    } else if (effectiveMode === 'replace-months') {
+      // Find all distinct months represented in new transactions
+      const incomingMonths = new Set(newTxs.map(t => getMonthKey(t.date)));
+      // Filter out existing transactions from those months
+      const retainedTxs = transactions.filter(t => !incomingMonths.has(getMonthKey(t.date)));
+      finalTxs = [...retainedTxs, ...newTxs];
+      addedTxs = newTxs;
+>>>>>>> ef174d7 (Update finance tracker)
       skippedCount = 0;
     } else {
       // Safe deduplication mode. Excel imports are MERGE-ONLY:
@@ -1006,16 +1072,20 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // - Duplicate rows inside the same incoming file are also handled consistently.
       const existingIds = new Set<string>();
       const existingFingerprints = new Set<string>();
+<<<<<<< HEAD
       const repairedUpdatedAtById = new Map<string, string>();
       const resetAtMs = lastFullEraseAtRef.current
         ? new Date(lastFullEraseAtRef.current).getTime()
         : null;
+=======
+>>>>>>> ef174d7 (Update finance tracker)
 
       for (const t of transactions) {
         if (t.id) existingIds.add(t.id);
         existingFingerprints.add(getTransactionFingerprint(t));
       }
 
+<<<<<<< HEAD
       // Repair rows from an earlier import that are already present locally but
       // have no updatedAt (or an updatedAt older than the full-clear marker).
       // They would otherwise be skipped as duplicates and then disappear on
@@ -1041,13 +1111,19 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           : t
       );
 
+=======
+>>>>>>> ef174d7 (Update finance tracker)
       // A fingerprint is treated as an idempotency key for Excel imports. Once a
       // transaction with the same normalized contents exists, importing the same
       // row again must never create another copy. The previous count-based logic
       // allowed a third copy when the ledger already contained two copies.
       const acceptedIncomingFingerprints = new Set<string>();
 
+<<<<<<< HEAD
       for (const incoming of normalizedTxs) {
+=======
+      for (const incoming of newTxs) {
+>>>>>>> ef174d7 (Update finance tracker)
         if (incoming.id && existingIds.has(incoming.id)) {
           skippedCount++;
           continue;
@@ -1065,6 +1141,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (incoming.id) existingIds.add(incoming.id);
       }
 
+<<<<<<< HEAD
       finalTxs = [...repairedTransactions, ...addedTxs];
     }
 
@@ -1075,6 +1152,18 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     const importedIds = new Set(normalizedTxs.map(t => t.id));
+=======
+      finalTxs = [...transactions, ...addedTxs];
+    }
+
+    // If nothing new was added and duplicates were skipped
+    if (addedTxs.length === 0 && skippedCount > 0) {
+      showToast(`All ${newTxs.length} transaction${newTxs.length === 1 ? '' : 's'} already exist in your ledger. No duplicates added.`, 'info');
+      return { addedCount: 0, skippedCount, totalCount: transactions.length };
+    }
+
+    const importedIds = new Set(newTxs.map(t => t.id));
+>>>>>>> ef174d7 (Update finance tracker)
     const nextDeletedIds = deletedTransactionIds.filter(id => !importedIds.has(id));
     setTransactions(finalTxs);
     setDeletedTransactionIds(nextDeletedIds);
@@ -1089,7 +1178,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     persistToCloudLedger(finalTxs, categories, savingsGoals, currency, ledgerId, nextDeletedIds);
 
+<<<<<<< HEAD
     const processedRows = totalInputRows ?? normalizedTxs.length;
+=======
+    const processedRows = totalInputRows ?? newTxs.length;
+>>>>>>> ef174d7 (Update finance tracker)
     showToast(
       `Excel import complete: ${processedRows} rows processed • ${addedTxs.length} new added • ${skippedCount} duplicates skipped • ${finalTxs.length} total stored`,
       skippedCount > 0 ? 'info' : 'success'
@@ -1173,8 +1266,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const next = { ...prevOrder, [type]: list };
       storageService.saveCategoryOrder(activeUserId, next);
       storageService.saveCategoryOrder(ledgerId, next);
+<<<<<<< HEAD
       if (user) storageService.saveCloudUserProfile(user.id, { categoryOrder: next }).catch(() => {});
       persistToCloudLedger(transactions, categories, savingsGoals, currency, ledgerId, deletedTransactionIds, spendingClassification, next);
+=======
+>>>>>>> ef174d7 (Update finance tracker)
       return next;
     });
 
@@ -1200,8 +1296,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const next = { ...prevOrder, [type]: list };
       storageService.saveCategoryOrder(activeUserId, next);
       storageService.saveCategoryOrder(ledgerId, next);
+<<<<<<< HEAD
       if (user) storageService.saveCloudUserProfile(user.id, { categoryOrder: next }).catch(() => {});
       persistToCloudLedger(transactions, categories, savingsGoals, currency, ledgerId, deletedTransactionIds, spendingClassification, next);
+=======
+>>>>>>> ef174d7 (Update finance tracker)
       return next;
     });
     showToast(`Category "${name}" deleted.`, 'info');
@@ -1267,9 +1366,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setCategoryOrder(order);
     storageService.saveCategoryOrder(activeUserId, order);
     storageService.saveCategoryOrder(ledgerId, order);
+<<<<<<< HEAD
     if (user) storageService.saveCloudUserProfile(user.id, { categoryOrder: order }).catch(() => {});
     persistToCloudLedger(transactions, categories, savingsGoals, currency, ledgerId, deletedTransactionIds, spendingClassification, order);
   }, [activeUserId, categories, currency, deletedTransactionIds, ledgerId, persistToCloudLedger, savingsGoals, spendingClassification, transactions, user]);
+=======
+  }, [activeUserId, ledgerId]);
+>>>>>>> ef174d7 (Update finance tracker)
 
   const moveCategory = useCallback((type: TransactionType, name: string, direction: 'up' | 'down') => {
     setCategoryOrder(prevOrder => {
@@ -1292,10 +1395,17 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       storageService.saveLocalCategories(activeUserId, updated);
       storageService.saveLocalCategories(ledgerId, updated);
       if (user) storageService.saveCloudUserProfile(user.id, { categories: updated }).catch(() => {});
+<<<<<<< HEAD
       persistToCloudLedger(transactions, updated, savingsGoals, currency, ledgerId, deletedTransactionIds, spendingClassification, nextOrder);
       return nextOrder;
     });
   }, [activeUserId, categories, currency, deletedTransactionIds, ledgerId, persistToCloudLedger, savingsGoals, spendingClassification, transactions, user]);
+=======
+      persistToCloudLedger(transactions, updated, savingsGoals, currency, ledgerId);
+      return nextOrder;
+    });
+  }, [activeUserId, categories, currency, ledgerId, persistToCloudLedger, savingsGoals, transactions, user]);
+>>>>>>> ef174d7 (Update finance tracker)
 
   const reorderCategory = useCallback((type: TransactionType, name: string, targetIndex: number) => {
     setCategoryOrder(prevOrder => {
@@ -1317,10 +1427,17 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       storageService.saveLocalCategories(activeUserId, updated);
       storageService.saveLocalCategories(ledgerId, updated);
       if (user) storageService.saveCloudUserProfile(user.id, { categories: updated }).catch(() => {});
+<<<<<<< HEAD
       persistToCloudLedger(transactions, updated, savingsGoals, currency, ledgerId, deletedTransactionIds, spendingClassification, nextOrder);
       return nextOrder;
     });
   }, [activeUserId, categories, currency, deletedTransactionIds, ledgerId, persistToCloudLedger, savingsGoals, spendingClassification, transactions, user]);
+=======
+      persistToCloudLedger(transactions, updated, savingsGoals, currency, ledgerId);
+      return nextOrder;
+    });
+  }, [activeUserId, categories, currency, ledgerId, persistToCloudLedger, savingsGoals, transactions, user]);
+>>>>>>> ef174d7 (Update finance tracker)
 
   const moveSubcategory = useCallback((type: TransactionType, category: string, subcategory: string, direction: 'up' | 'down') => {
     setCategories(prev => {
@@ -1368,20 +1485,30 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const next = { rules, updatedAt: new Date().toISOString() };
       storageService.saveSpendingClassification(activeUserId, next);
       storageService.saveSpendingClassification(ledgerId, next);
+<<<<<<< HEAD
       persistToCloudLedger(transactions, categories, savingsGoals, currency, ledgerId, deletedTransactionIds, next, categoryOrder);
       if (user) storageService.saveCloudUserProfile(user.id, { spendingClassification: next }).catch(() => {});
       return next;
     });
   }, [activeUserId, categories, categoryOrder, currency, deletedTransactionIds, ledgerId, persistToCloudLedger, savingsGoals, transactions, user]);
+=======
+      return next;
+    });
+  }, [activeUserId, ledgerId]);
+>>>>>>> ef174d7 (Update finance tracker)
 
   const setSpendingRulesBulk = useCallback((rules: Record<string, 'need' | 'want'>) => {
     const next = { rules: { ...rules }, updatedAt: new Date().toISOString() };
     setSpendingClassification(next);
     storageService.saveSpendingClassification(activeUserId, next);
     storageService.saveSpendingClassification(ledgerId, next);
+<<<<<<< HEAD
     persistToCloudLedger(transactions, categories, savingsGoals, currency, ledgerId, deletedTransactionIds, next, categoryOrder);
     if (user) storageService.saveCloudUserProfile(user.id, { spendingClassification: next }).catch(() => {});
   }, [activeUserId, categories, categoryOrder, currency, deletedTransactionIds, ledgerId, persistToCloudLedger, savingsGoals, spendingClassification, transactions, user]);
+=======
+  }, [activeUserId, ledgerId]);
+>>>>>>> ef174d7 (Update finance tracker)
 
   const resetDefaultCategories = useCallback(() => {
     setCategories(DEFAULT_CATEGORIES);
@@ -1396,11 +1523,19 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     storageService.saveCategoryOrder(activeUserId, defaultOrder);
     storageService.saveCategoryOrder(ledgerId, defaultOrder);
     if (user) {
+<<<<<<< HEAD
       storageService.saveCloudUserProfile(user.id, { categories: DEFAULT_CATEGORIES, categoryOrder: defaultOrder }).catch(() => {});
     }
     persistToCloudLedger(transactions, DEFAULT_CATEGORIES, savingsGoals, currency, ledgerId, deletedTransactionIds, spendingClassification, defaultOrder);
     showToast('Categories reset to standard defaults.', 'info');
   }, [activeUserId, currency, deletedTransactionIds, ledgerId, persistToCloudLedger, savingsGoals, showToast, spendingClassification, transactions, user]);
+=======
+      storageService.saveCloudUserProfile(user.id, { categories: DEFAULT_CATEGORIES }).catch(() => {});
+    }
+    persistToCloudLedger(transactions, DEFAULT_CATEGORIES, savingsGoals, currency, ledgerId);
+    showToast('Categories reset to standard defaults.', 'info');
+  }, [activeUserId, currency, ledgerId, persistToCloudLedger, savingsGoals, showToast, transactions, user]);
+>>>>>>> ef174d7 (Update finance tracker)
 
   // ==========================================
   // Savings Goals Operations
@@ -1438,7 +1573,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [activeUserId, categories, currency, ledgerId, persistToCloudLedger, showToast, transactions, user]);
 
   const getCurrentMonthGoal = useCallback((monthKeyParam?: string): MonthlySavingsGoal | undefined => {
+<<<<<<< HEAD
     const key = monthKeyParam || getMonthKey(currentMonth.toISOString().slice(0, 10));
+=======
+    const key = monthKeyParam || getMonthKey(currentMonth);
+>>>>>>> ef174d7 (Update finance tracker)
     return savingsGoals.find(g => g.monthKey === key);
   }, [currentMonth, savingsGoals]);
 

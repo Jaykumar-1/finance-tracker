@@ -12,10 +12,14 @@ import {
   Layers,
   ArrowRight,
   ShieldCheck,
+<<<<<<< HEAD
   Sparkles,
   RefreshCw,
   Download,
   Upload
+=======
+  Sparkles
+>>>>>>> ef174d7 (Update finance tracker)
 } from 'lucide-react';
 
 export const MultiDeviceModal: React.FC = () => {

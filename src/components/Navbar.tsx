@@ -1,7 +1,17 @@
+<<<<<<< HEAD
 import React, { useEffect, useState } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import {
   Menu,
+=======
+import React from 'react';
+import { useFinance } from '../context/FinanceContext';
+import { SUPPORTED_CURRENCIES } from '../utils/constants';
+import {
+  Menu,
+  Plus,
+  Target,
+>>>>>>> ef174d7 (Update finance tracker)
   User,
   ShieldCheck,
   Lock,
@@ -16,6 +26,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMobileMenu }) => {
   const {
     user,
     activePage,
+<<<<<<< HEAD
+=======
+    currency,
+    setCurrency,
+    openTxModal,
+    openGoalModal,
+>>>>>>> ef174d7 (Update finance tracker)
     openAuthModal,
     setActivePage,
     isSidebarHidden,
@@ -24,6 +41,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMobileMenu }) => {
     lockLedger,
   } = useFinance();
 
+<<<<<<< HEAD
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -51,6 +69,23 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMobileMenu }) => {
 
   return (
     <header className={`sticky top-0 z-50 h-14 sm:h-16 md:h-[72px] px-2.5 sm:px-3 md:px-6 flex items-center justify-between gap-2 overflow-hidden transition-all duration-300 ${isScrolled ? 'bg-[#091321]/95 shadow-[0_12px_35px_rgba(0,0,0,0.28)] border-b border-blue-500/20 backdrop-blur-2xl' : 'bg-[#0b1424]/85 border-b border-[#26344b]/80 backdrop-blur-xl'}`}>
+=======
+  const getPageTitle = () => {
+    switch (activePage) {
+      case 'dashboard': return 'Dashboard';
+      case 'transactions': return 'Transactions';
+      case 'income': return 'Income Tracker';
+      case 'expenses': return 'Expense Tracker';
+      case 'investments': return 'Investments & Savings';
+      case 'analytics': return 'Financial Analytics';
+      case 'profile': return 'Profile & Settings';
+      default: return 'My Finance';
+    }
+  };
+
+  return (
+    <header className="sticky top-0 z-50 h-14 sm:h-16 md:h-[72px] bg-[#0b1424]/85 backdrop-blur-xl border-b border-[#26344b]/80 px-2.5 sm:px-3 md:px-6 flex items-center justify-between gap-2 overflow-hidden">
+>>>>>>> ef174d7 (Update finance tracker)
       {/* Left section */}
       <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-3.5 min-w-0">
         {/* Mobile menu trigger */}
@@ -76,12 +111,42 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMobileMenu }) => {
           <div className="hidden sm:flex w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-blue-500 items-center justify-center text-slate-950 font-black text-base shadow-md shadow-emerald-500/10">
             ₹
           </div>
+<<<<<<< HEAD
 
+=======
+          <div>
+            <div className="text-[10px] font-extrabold uppercase tracking-widest text-[#71839d]">
+              PERSONAL FINANCE
+            </div>
+            <h1 className="text-xs sm:text-sm md:text-base font-bold text-[#e8eef8] leading-tight truncate max-w-[125px] sm:max-w-[220px] md:max-w-none">
+              {getPageTitle()}
+            </h1>
+          </div>
+>>>>>>> ef174d7 (Update finance tracker)
         </div>
       </div>
 
       {/* Right section */}
       <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2.5 min-w-0">
+<<<<<<< HEAD
+=======
+        {/* Currency Selector */}
+        <div className="hidden lg:block">
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            className="bg-[#101a2b] border border-[#26344b] text-xs font-semibold text-[#c8d4e5] rounded-lg px-2 py-1.5 focus:outline-none focus:border-blue-500"
+            title="Choose Currency"
+          >
+            {SUPPORTED_CURRENCIES.map(curr => (
+              <option key={curr.code} value={curr.code}>
+                {curr.symbol} {curr.code}
+              </option>
+            ))}
+          </select>
+        </div>
+
+>>>>>>> ef174d7 (Update finance tracker)
         {/* Privacy Lock Toggle Button */}
         {isUnlocked ? (
           <button
@@ -103,6 +168,18 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMobileMenu }) => {
           </button>
         )}
 
+<<<<<<< HEAD
+=======
+        {/* Add Transaction Button */}
+        <button
+          onClick={() => openTxModal('expense')}
+          className="flex items-center gap-1.5 px-2.5 sm:px-3 md:px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-xs md:text-sm font-semibold shadow-md shadow-blue-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
+        >
+          <Plus className="w-4 h-4" />
+          <span className="hidden sm:inline">Add</span>
+        </button>
+
+>>>>>>> ef174d7 (Update finance tracker)
         {/* User Profile / Auth Button */}
         {user ? (
           <button

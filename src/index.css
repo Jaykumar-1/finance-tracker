@@ -298,11 +298,16 @@ input:focus, select:focus, textarea:focus {
     font-size: 16px !important;
   }
 
+<<<<<<< HEAD
   /* `overflow-x: hidden` creates a scroll container and can break sticky bars.
      `clip` prevents horizontal bleed without changing the sticky scroll ancestor. */
   main {
     overflow-x: clip;
     min-width: 0;
+=======
+  main {
+    overflow-x: hidden;
+>>>>>>> ef174d7 (Update finance tracker)
   }
 
   .overflow-x-auto {
@@ -405,6 +410,7 @@ input:focus, select:focus, textarea:focus {
     grid-template-columns: 1fr;
   }
 }
+<<<<<<< HEAD
 
 
 /* Refined application-wide visual system */
@@ -473,3 +479,5 @@ main h1, main h2, main h3, main [data-section-title] { scroll-margin-top: 100px;
 @media (prefers-reduced-motion: reduce) {
   .finance-sticky-bar { transition: none; }
 }
+=======
+>>>>>>> ef174d7 (Update finance tracker)

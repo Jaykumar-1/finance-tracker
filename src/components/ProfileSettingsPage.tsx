@@ -24,9 +24,13 @@ import {
   Check,
   Settings2,
   Database,
+<<<<<<< HEAD
   Link as LinkIcon,
   Camera,
   X
+=======
+  Link as LinkIcon
+>>>>>>> ef174d7 (Update finance tracker)
 } from 'lucide-react';
 
 type SettingsTab = 'account' | 'security' | 'data' | 'categories' | 'sync';
@@ -56,11 +60,14 @@ export const ProfileSettingsPage: React.FC = () => {
   } = useFinance();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+<<<<<<< HEAD
   const profileImageInputRef = useRef<HTMLInputElement>(null);
   const cropCanvasRef = useRef<HTMLCanvasElement>(null);
   const [cropSource, setCropSource] = useState<string | null>(null);
   const [cropZoom, setCropZoom] = useState(1);
   const [showProfileImage, setShowProfileImage] = useState(false);
+=======
+>>>>>>> ef174d7 (Update finance tracker)
 
   const [activeTab, setActiveTab] = useState<SettingsTab>('account');
   const [copiedLink, setCopiedLink] = useState(false);
@@ -77,6 +84,7 @@ export const ProfileSettingsPage: React.FC = () => {
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
+<<<<<<< HEAD
 
   const handleProfileImageSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -140,6 +148,8 @@ export const ProfileSettingsPage: React.FC = () => {
     }
   };
 
+=======
+>>>>>>> ef174d7 (Update finance tracker)
   const handleLogout = () => {
     if (window.confirm('Log out from this device? Local records stay saved.')) {
       authService.logout();
@@ -290,6 +300,7 @@ export const ProfileSettingsPage: React.FC = () => {
       {/* Header */}
       <div className="glass-card p-4 md:p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
+<<<<<<< HEAD
           <div className="relative group">
             <button type="button" onClick={() => user?.avatarUrl ? setShowProfileImage(true) : profileImageInputRef.current?.click()}
               className="w-14 h-14 rounded-full overflow-hidden bg-gradient-to-tr from-emerald-400 to-blue-500 flex items-center justify-center text-slate-900 font-black text-lg border border-white/20"
@@ -298,6 +309,10 @@ export const ProfileSettingsPage: React.FC = () => {
             </button>
             <button type="button" onClick={() => profileImageInputRef.current?.click()} className="absolute -bottom-1 -right-1 rounded-full p-1.5 bg-blue-600 text-white border-2 border-[#101a2a]" title="Change profile picture"><Camera className="w-3 h-3" /></button>
             <input ref={profileImageInputRef} type="file" accept="image/*" className="hidden" onChange={handleProfileImageSelected} />
+=======
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-emerald-400 to-blue-500 flex items-center justify-center text-slate-900 font-black text-lg">
+            {user?.displayName?.charAt(0)?.toUpperCase() || <Settings2 className="w-5 h-5" />}
+>>>>>>> ef174d7 (Update finance tracker)
           </div>
           <div>
             <h2 className="text-lg font-bold text-[#e8eef8]">Profile & Settings</h2>
@@ -575,11 +590,16 @@ export const ProfileSettingsPage: React.FC = () => {
           <div className="pt-3 border-t border-[#26344b]">
             <button
               onClick={() => {
+<<<<<<< HEAD
                 if (window.confirm('Delete ALL transactions permanently from this device and cloud ledger? This cannot be undone.')) {
                   void clearAllTransactions().catch((error: unknown) => {
                     const message = error instanceof Error ? error.message : 'Unable to completely clear transaction data.';
                     showToast(`Clear failed: ${message}`, 'error');
                   });
+=======
+                if (window.confirm('Delete ALL transactions permanently? This cannot be undone.')) {
+                  clearAllTransactions();
+>>>>>>> ef174d7 (Update finance tracker)
                 }
               }}
               className="flex items-center gap-2 px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-semibold transition-colors"
@@ -695,6 +715,7 @@ export const ProfileSettingsPage: React.FC = () => {
           </button>
         </div>
       )}
+<<<<<<< HEAD
 
       {cropSource && (
         <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4">
@@ -717,6 +738,8 @@ export const ProfileSettingsPage: React.FC = () => {
           <img src={user.avatarUrl} alt="Profile picture enlarged" className="max-w-[90vw] max-h-[85vh] object-contain rounded-xl" onClick={e => e.stopPropagation()} />
         </div>
       )}
+=======
+>>>>>>> ef174d7 (Update finance tracker)
     </div>
   );
 };

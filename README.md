@@ -58,6 +58,7 @@ npm start
 - Category rename preserves order; CRUD + reorder controls
 - JSON backup restore uses replace mode reliably
 - Richer glass UI, FAB, animations
+<<<<<<< HEAD
 
 ## Cross-window and cross-device persistence
 
@@ -83,3 +84,5 @@ To verify a production bundle after dependencies are installed:
 npm run lint
 npm run build
 ```
+=======
+>>>>>>> ef174d7 (Update finance tracker)

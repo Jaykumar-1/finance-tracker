@@ -236,7 +236,11 @@ export const TransactionsPage: React.FC = () => {
   return (
     <div className="space-y-5">
       {/* Page Header */}
+<<<<<<< HEAD
       <div data-sticky-action-bar className="finance-sticky-bar flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#101a2b] p-4 md:p-5 rounded-2xl border border-[#26344b] shadow-md">
+=======
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#101a2b] p-4 md:p-5 rounded-2xl border border-[#26344b] shadow-md">
+>>>>>>> ef174d7 (Update finance tracker)
         <div>
           <h2 className="text-lg md:text-xl font-bold text-[#e8eef8]">
             All Transactions ({filtered.length})

@@ -83,6 +83,7 @@ export class FinanceStorageService {
         return JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
       }
       const parsed = JSON.parse(raw);
+<<<<<<< HEAD
       const defaults = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES)) as CategoryConfig;
       (['income', 'investment'] as const).forEach(type => {
         if (!parsed[type] || typeof parsed[type] !== 'object') parsed[type] = defaults[type];
@@ -120,6 +121,20 @@ export class FinanceStorageService {
       });
       parsed.expense = migratedExpense;
       safeSetItem(STORAGE_KEYS.CATEGORIES(userId), JSON.stringify(parsed));
+=======
+      const defaults = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+      (['income', 'expense', 'investment'] as const).forEach(type => {
+        if (!parsed[type] || typeof parsed[type] !== 'object') {
+          parsed[type] = defaults[type];
+        } else {
+          Object.entries(defaults[type]).forEach(([cat, subcats]) => {
+            if (!Object.prototype.hasOwnProperty.call(parsed[type], cat)) {
+              parsed[type][cat] = subcats;
+            }
+          });
+        }
+      });
+>>>>>>> ef174d7 (Update finance tracker)
       return parsed;
     } catch {
       return JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
@@ -135,6 +150,7 @@ export class FinanceStorageService {
       const raw = safeGetItem(STORAGE_KEYS.CATEGORY_ORDER(userId));
       if (raw) {
         const parsed = JSON.parse(raw);
+<<<<<<< HEAD
         const aliases: Record<string, string> = {
           'Food & Dining': 'Food',
           'Utility and Bills': 'Utility & Bills',
@@ -153,6 +169,11 @@ export class FinanceStorageService {
         return {
           income: Array.isArray(parsed.income) ? parsed.income : [],
           expense,
+=======
+        return {
+          income: Array.isArray(parsed.income) ? parsed.income : [],
+          expense: Array.isArray(parsed.expense) ? parsed.expense : [],
+>>>>>>> ef174d7 (Update finance tracker)
           investment: Array.isArray(parsed.investment) ? parsed.investment : []
         };
       }
@@ -348,6 +369,7 @@ export class FinanceStorageService {
 
     try {
       const txDocRef = doc(db, 'users', uid, 'transactions', tx.id);
+<<<<<<< HEAD
       // Firestore rejects undefined values. Optional transaction fields such as
       // note, subcategory, description, and Excel metadata are often absent on
       // imported rows, so omit only undefined fields before writing.
@@ -356,6 +378,10 @@ export class FinanceStorageService {
       );
       const payload = {
         ...definedTransactionFields,
+=======
+      const payload = {
+        ...tx,
+>>>>>>> ef174d7 (Update finance tracker)
         userId: uid,
         updatedAt: tx.updatedAt || new Date().toISOString(),
         serverTimestamp: serverTimestamp()
@@ -377,6 +403,7 @@ export class FinanceStorageService {
 
     try {
       const txDocRef = doc(db, 'users', uid, 'transactions', tx.id);
+<<<<<<< HEAD
       // Match addTransaction: optional fields must be omitted rather than sent
       // as undefined, otherwise Firestore rejects the entire update.
       const definedTransactionFields = Object.fromEntries(
@@ -384,6 +411,10 @@ export class FinanceStorageService {
       );
       const payload = {
         ...definedTransactionFields,
+=======
+      const payload = {
+        ...tx,
+>>>>>>> ef174d7 (Update finance tracker)
         userId: uid,
         updatedAt: new Date().toISOString(),
         serverTimestamp: serverTimestamp()
@@ -439,7 +470,11 @@ export class FinanceStorageService {
   /**
    * Saves User Profile, Categories, Savings Goals to /users/{uid}
    */
+<<<<<<< HEAD
   public async saveCloudUserProfile(uid: string, data: Partial<UserProfile> & { categories?: CategoryConfig; categoryOrder?: CategoryOrder; spendingClassification?: SpendingClassification; savingsGoals?: MonthlySavingsGoal[] }): Promise<void> {
+=======
+  public async saveCloudUserProfile(uid: string, data: Partial<UserProfile> & { categories?: CategoryConfig; savingsGoals?: MonthlySavingsGoal[] }): Promise<void> {
+>>>>>>> ef174d7 (Update finance tracker)
     if (!uid) return;
     try {
       const userDocRef = doc(db, 'users', uid);
@@ -548,7 +583,11 @@ export class FinanceStorageService {
    */
   public subscribeToUserProfile(
     uid: string,
+<<<<<<< HEAD
     onUpdate: (profile: Partial<UserProfile> & { categories?: CategoryConfig; categoryOrder?: CategoryOrder; spendingClassification?: SpendingClassification; savingsGoals?: MonthlySavingsGoal[] }) => void,
+=======
+    onUpdate: (profile: Partial<UserProfile> & { categories?: CategoryConfig; savingsGoals?: MonthlySavingsGoal[] }) => void,
+>>>>>>> ef174d7 (Update finance tracker)
     onError?: (err: Error) => void
   ): Unsubscribe {
     if (!uid) return () => {};
@@ -648,11 +687,16 @@ export class FinanceStorageService {
 
         chunk.forEach(tx => {
           const docRef = doc(db, 'users', uid, 'transactions', tx.id);
+<<<<<<< HEAD
           const definedTransactionFields = Object.fromEntries(
             Object.entries(tx).filter(([, value]) => value !== undefined)
           );
           batch.set(docRef, {
             ...definedTransactionFields,
+=======
+          batch.set(docRef, {
+            ...tx,
+>>>>>>> ef174d7 (Update finance tracker)
             userId: uid,
             updatedAt: tx.updatedAt || new Date().toISOString(),
             serverTimestamp: serverTimestamp()
@@ -728,8 +772,11 @@ export class FinanceStorageService {
         name: ledgerData.name || 'Personal Finance Ledger',
         currency: ledgerData.currency || 'INR',
         categories: ledgerData.categories || DEFAULT_CATEGORIES,
+<<<<<<< HEAD
         categoryOrder: ledgerData.categoryOrder,
         spendingClassification: ledgerData.spendingClassification,
+=======
+>>>>>>> ef174d7 (Update finance tracker)
         savingsGoals: Array.isArray(ledgerData.savingsGoals) ? ledgerData.savingsGoals : [],
         transactions: Array.isArray(ledgerData.transactions) ? ledgerData.transactions : [],
         deletedTransactionIds: Array.isArray(ledgerData.deletedTransactionIds) ? ledgerData.deletedTransactionIds : [],
@@ -788,8 +835,11 @@ export class FinanceStorageService {
           name: data.name || 'Personal Finance Ledger',
           currency: data.currency || 'INR',
           categories: data.categories || DEFAULT_CATEGORIES,
+<<<<<<< HEAD
           categoryOrder: data.categoryOrder,
           spendingClassification: data.spendingClassification,
+=======
+>>>>>>> ef174d7 (Update finance tracker)
           savingsGoals: Array.isArray(data.savingsGoals) ? data.savingsGoals : [],
           transactions: Array.isArray(data.transactions) ? data.transactions : [],
           deletedTransactionIds: Array.isArray(data.deletedTransactionIds) ? data.deletedTransactionIds : [],
@@ -827,8 +877,11 @@ export class FinanceStorageService {
             name: data.name || 'Personal Finance Ledger',
             currency: data.currency || 'INR',
             categories: data.categories || DEFAULT_CATEGORIES,
+<<<<<<< HEAD
             categoryOrder: data.categoryOrder,
             spendingClassification: data.spendingClassification,
+=======
+>>>>>>> ef174d7 (Update finance tracker)
             savingsGoals: Array.isArray(data.savingsGoals) ? data.savingsGoals : [],
             transactions: Array.isArray(data.transactions) ? data.transactions : [],
             deletedTransactionIds: Array.isArray(data.deletedTransactionIds) ? data.deletedTransactionIds : [],
