@@ -969,13 +969,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     // Canonicalize dates before de-duplication and persistence. Older backups may
     // contain ISO timestamps, which otherwise fail exact YYYY-MM-DD calendar matches.
-    // Stamp every row imported now with a fresh updatedAt value. Cloud loading uses
-    // the ledger resetAt marker to reject pre-reset transactions; Excel rows often
-    // have no updatedAt (or an old one), so they were being filtered out on other
-    // devices even though they appeared on the importing device.
+    // Every newly imported row must also have a fresh updatedAt timestamp. The
+    // cloud snapshot loader uses resetAt to reject pre-erase transactions; imported
+    // rows without updatedAt are treated as timestamp 0 and disappear on other devices.
     const importUpdatedAt = new Date().toISOString();
     const normalizedTxs = newTxs.map(tx => ({
       ...normalizeTransactionDate(tx),
+      // An import is a new write event even if the Excel row carries an old timestamp.
       updatedAt: importUpdatedAt
     }));
 
@@ -984,6 +984,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     let finalTxs: Transaction[];
     let addedTxs: Transaction[] = [];
     let skippedCount = 0;
+    let repairedExistingTimestamps = false;
 
     if (effectiveMode === 'replace') {
       finalTxs = normalizedTxs;
@@ -1005,11 +1006,40 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // - Duplicate rows inside the same incoming file are also handled consistently.
       const existingIds = new Set<string>();
       const existingFingerprints = new Set<string>();
+      const repairedUpdatedAtById = new Map<string, string>();
+      const resetAtMs = lastFullEraseAtRef.current
+        ? new Date(lastFullEraseAtRef.current).getTime()
+        : null;
 
       for (const t of transactions) {
         if (t.id) existingIds.add(t.id);
         existingFingerprints.add(getTransactionFingerprint(t));
       }
+
+      // Repair rows from an earlier import that are already present locally but
+      // have no updatedAt (or an updatedAt older than the full-clear marker).
+      // They would otherwise be skipped as duplicates and then disappear on
+      // another device when the cloud snapshot applies resetAt filtering.
+      for (const incoming of normalizedTxs) {
+        const incomingFingerprint = getTransactionFingerprint(incoming);
+        const existing = transactions.find(t =>
+          (incoming.id && t.id === incoming.id) ||
+          getTransactionFingerprint(t) === incomingFingerprint
+        );
+        if (!existing?.id) continue;
+        const existingUpdatedAt = existing.updatedAt
+          ? new Date(existing.updatedAt).getTime()
+          : 0;
+        if (!Number.isFinite(existingUpdatedAt) || (resetAtMs !== null && existingUpdatedAt <= resetAtMs)) {
+          repairedUpdatedAtById.set(existing.id, importUpdatedAt);
+        }
+      }
+      repairedExistingTimestamps = repairedUpdatedAtById.size > 0;
+      const repairedTransactions = transactions.map(t =>
+        t.id && repairedUpdatedAtById.has(t.id)
+          ? { ...t, updatedAt: repairedUpdatedAtById.get(t.id)! }
+          : t
+      );
 
       // A fingerprint is treated as an idempotency key for Excel imports. Once a
       // transaction with the same normalized contents exists, importing the same
@@ -1035,11 +1065,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (incoming.id) existingIds.add(incoming.id);
       }
 
-      finalTxs = [...transactions, ...addedTxs];
+      finalTxs = [...repairedTransactions, ...addedTxs];
     }
 
     // If nothing new was added and duplicates were skipped
-    if (addedTxs.length === 0 && skippedCount > 0) {
+    if (addedTxs.length === 0 && skippedCount > 0 && !repairedExistingTimestamps) {
       showToast(`All ${normalizedTxs.length} transaction${normalizedTxs.length === 1 ? '' : 's'} already exist in your ledger. No duplicates added.`, 'info');
       return { addedCount: 0, skippedCount, totalCount: transactions.length };
     }
