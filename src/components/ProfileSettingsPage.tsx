@@ -575,8 +575,11 @@ export const ProfileSettingsPage: React.FC = () => {
           <div className="pt-3 border-t border-[#26344b]">
             <button
               onClick={() => {
-                if (window.confirm('Delete ALL transactions permanently? This cannot be undone.')) {
-                  clearAllTransactions();
+                if (window.confirm('Delete ALL transactions permanently from this device and cloud ledger? This cannot be undone.')) {
+                  void clearAllTransactions().catch((error: unknown) => {
+                    const message = error instanceof Error ? error.message : 'Unable to completely clear transaction data.';
+                    showToast(`Clear failed: ${message}`, 'error');
+                  });
                 }
               }}
               className="flex items-center gap-2 px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-semibold transition-colors"

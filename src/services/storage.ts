@@ -265,7 +265,9 @@ export class FinanceStorageService {
         const keys: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
-          if (key && key.startsWith('myfinance_') && key.endsWith('_transactions')) {
+          // A queued sync can contain a stale JSON snapshot, so clear transaction
+          // caches and queued transaction writes together during a full reset.
+          if (key && key.startsWith('myfinance_') && (key.endsWith('_transactions') || key.endsWith('_sync_queue'))) {
             keys.push(key);
           }
         }
@@ -277,7 +279,7 @@ export class FinanceStorageService {
     // browser contexts where localStorage writes can fail and safeSetItem stores
     // the JSON in memoryStorage instead.
     for (const key of Array.from(memoryStorage.keys())) {
-      if (key.endsWith('_transactions') || key === STORAGE_KEYS.TRANSACTIONS(userId)) {
+      if (key.startsWith('myfinance_') && (key.endsWith('_transactions') || key.endsWith('_sync_queue'))) {
         memoryStorage.delete(key);
       }
     }
@@ -413,11 +415,15 @@ export class FinanceStorageService {
       const snap = await getDocs(txColRef);
       if (snap.empty) return { success: true };
 
-      const batch = writeBatch(db);
-      snap.docs.forEach(d => {
-        batch.delete(d.ref);
-      });
-      await batch.commit();
+      // Firestore batches are limited to 500 operations. Delete in smaller
+      // chunks so a large ledger is actually fully cleared instead of failing
+      // partway through the reset.
+      const chunkSize = 450;
+      for (let i = 0; i < snap.docs.length; i += chunkSize) {
+        const batch = writeBatch(db);
+        snap.docs.slice(i, i + chunkSize).forEach(d => batch.delete(d.ref));
+        await batch.commit();
+      }
       return { success: true };
     } catch (err: any) {
       console.error('Firestore clearAllCloudTransactions error:', err);

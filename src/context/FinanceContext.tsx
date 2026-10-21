@@ -918,7 +918,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     storageService.purgeLocalTransactions(ledgerId);
 
     if (user && user.id) {
-      await storageService.clearAllCloudTransactions(user.id).catch(() => {});
+      // Do not silently ignore a failed delete: old canonical transaction docs
+      // could otherwise be migrated back into the JSON ledger on a later load.
+      const transactionDeleteResult = await storageService.clearAllCloudTransactions(user.id);
+      if (!transactionDeleteResult.success) {
+        throw new Error(transactionDeleteResult.error || 'Failed to delete transaction records from cloud storage.');
+      }
     }
 
     const emptyLedger: CloudLedger = {
