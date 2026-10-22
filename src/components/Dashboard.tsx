@@ -232,7 +232,7 @@ export const Dashboard: React.FC = () => {
     for (let i = startDayIndex - 1; i >= 0; i--) {
       const d = new Date(year, month - 1, prevMonthLastDay - i);
       const iso = toIsoDate(d);
-      const dayTxs = transactions.filter(t => t.date === iso);
+      const dayTxs = transactions.filter(t => toIsoDate(t.date) === iso);
       days.push({
         date: d,
         isoDate: iso,
@@ -250,7 +250,7 @@ export const Dashboard: React.FC = () => {
     for (let i = 1; i <= totalDays; i++) {
       const d = new Date(year, month, i);
       const iso = toIsoDate(d);
-      const dayTxs = transactions.filter(t => t.date === iso);
+      const dayTxs = transactions.filter(t => toIsoDate(t.date) === iso);
       days.push({
         date: d,
         isoDate: iso,
@@ -269,7 +269,7 @@ export const Dashboard: React.FC = () => {
     for (let i = 1; i <= remaining; i++) {
       const d = new Date(year, month + 1, i);
       const iso = toIsoDate(d);
-      const dayTxs = transactions.filter(t => t.date === iso);
+      const dayTxs = transactions.filter(t => toIsoDate(t.date) === iso);
       days.push({
         date: d,
         isoDate: iso,
@@ -288,7 +288,7 @@ export const Dashboard: React.FC = () => {
 
   // Selected Day transactions
   const selectedDayTransactions = useMemo(() => {
-    return transactions.filter(t => t.date === selectedDayIso);
+    return transactions.filter(t => toIsoDate(t.date) === selectedDayIso);
   }, [transactions, selectedDayIso]);
 
   // Recent transactions for current month
@@ -301,7 +301,7 @@ export const Dashboard: React.FC = () => {
   return (
     <div className={`flex flex-col ${viewMode === 'fit' ? 'gap-3' : 'gap-5'}`}>
       {/* 1. Header & Month Navigator */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 bg-[#101a2b] p-3 md:p-4 rounded-2xl border border-[#26344b] shadow-md">
+      <div data-sticky-action-bar className="finance-sticky-bar flex flex-wrap items-center justify-between gap-2.5 bg-[#101a2b] p-3 md:p-4 rounded-2xl border border-[#26344b] shadow-md">
         {/* Month Switcher Controls */}
         <div className="flex flex-wrap items-center gap-2">
           <button

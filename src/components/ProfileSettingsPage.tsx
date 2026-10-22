@@ -24,7 +24,9 @@ import {
   Check,
   Settings2,
   Database,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Camera,
+  X
 } from 'lucide-react';
 
 type SettingsTab = 'account' | 'security' | 'data' | 'categories' | 'sync';
@@ -54,6 +56,11 @@ export const ProfileSettingsPage: React.FC = () => {
   } = useFinance();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const profileImageInputRef = useRef<HTMLInputElement>(null);
+  const cropCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [cropSource, setCropSource] = useState<string | null>(null);
+  const [cropZoom, setCropZoom] = useState(1);
+  const [showProfileImage, setShowProfileImage] = useState(false);
 
   const [activeTab, setActiveTab] = useState<SettingsTab>('account');
   const [copiedLink, setCopiedLink] = useState(false);
@@ -69,6 +76,69 @@ export const ProfileSettingsPage: React.FC = () => {
   const [showNewPw, setShowNewPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+
+
+  const handleProfileImageSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      showToast('Please choose an image file.', 'warning');
+      event.target.value = '';
+      return;
+    }
+    if (file.size > 12 * 1024 * 1024) {
+      showToast('Please choose an image smaller than 12 MB.', 'warning');
+      event.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropSource(String(reader.result));
+      setCropZoom(1);
+    };
+    reader.onerror = () => showToast('Could not read that image.', 'error');
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  };
+
+  const saveCroppedProfileImage = async () => {
+    if (!cropSource) return;
+    if (!user) {
+      showToast('Sign in first to save and sync a profile picture across devices.', 'warning');
+      return;
+    }
+    try {
+      const image = new Image();
+      image.src = cropSource;
+      await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error('Could not load image'));
+      });
+      const side = Math.min(image.naturalWidth, image.naturalHeight) / cropZoom;
+      const sx = (image.naturalWidth - side) / 2;
+      const sy = (image.naturalHeight - side) / 2;
+      const canvas = document.createElement('canvas');
+      canvas.width = 1080;
+      canvas.height = 1080;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Image crop is unavailable');
+      context.drawImage(image, sx, sy, side, side, 0, 0, 1080, 1080);
+      const avatarUrl = canvas.toDataURL('image/jpeg', 0.82);
+      if (avatarUrl.length > 950000) {
+        showToast('This image is too large to sync. Choose a simpler or smaller image.', 'warning');
+        return;
+      }
+      if (user) {
+        const updatedUser = { ...user, avatarUrl };
+        setUser(updatedUser);
+        await storageService.saveCloudUserProfile(user.id, { avatarUrl, displayName: user.displayName });
+      }
+      setCropSource(null);
+      showToast('Profile picture saved as 1080 × 1080.', 'success');
+    } catch (error: any) {
+      showToast(error?.message || 'Could not crop profile picture.', 'error');
+    }
+  };
 
   const handleLogout = () => {
     if (window.confirm('Log out from this device? Local records stay saved.')) {
@@ -220,8 +290,14 @@ export const ProfileSettingsPage: React.FC = () => {
       {/* Header */}
       <div className="glass-card p-4 md:p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-emerald-400 to-blue-500 flex items-center justify-center text-slate-900 font-black text-lg">
-            {user?.displayName?.charAt(0)?.toUpperCase() || <Settings2 className="w-5 h-5" />}
+          <div className="relative group">
+            <button type="button" onClick={() => user?.avatarUrl ? setShowProfileImage(true) : profileImageInputRef.current?.click()}
+              className="w-14 h-14 rounded-full overflow-hidden bg-gradient-to-tr from-emerald-400 to-blue-500 flex items-center justify-center text-slate-900 font-black text-lg border border-white/20"
+              title={user?.avatarUrl ? 'View profile picture' : 'Add profile picture'}>
+              {user?.avatarUrl ? <img src={user.avatarUrl} alt="Profile" className="w-full h-full object-cover" /> : (user?.displayName?.charAt(0)?.toUpperCase() || <Settings2 className="w-5 h-5" />)}
+            </button>
+            <button type="button" onClick={() => profileImageInputRef.current?.click()} className="absolute -bottom-1 -right-1 rounded-full p-1.5 bg-blue-600 text-white border-2 border-[#101a2a]" title="Change profile picture"><Camera className="w-3 h-3" /></button>
+            <input ref={profileImageInputRef} type="file" accept="image/*" className="hidden" onChange={handleProfileImageSelected} />
           </div>
           <div>
             <h2 className="text-lg font-bold text-[#e8eef8]">Profile & Settings</h2>
@@ -499,8 +575,11 @@ export const ProfileSettingsPage: React.FC = () => {
           <div className="pt-3 border-t border-[#26344b]">
             <button
               onClick={() => {
-                if (window.confirm('Delete ALL transactions permanently? This cannot be undone.')) {
-                  clearAllTransactions();
+                if (window.confirm('Delete ALL transactions permanently from this device and cloud ledger? This cannot be undone.')) {
+                  void clearAllTransactions().catch((error: unknown) => {
+                    const message = error instanceof Error ? error.message : 'Unable to completely clear transaction data.';
+                    showToast(`Clear failed: ${message}`, 'error');
+                  });
                 }
               }}
               className="flex items-center gap-2 px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-semibold transition-colors"
@@ -614,6 +693,28 @@ export const ProfileSettingsPage: React.FC = () => {
             <Share2 className="w-3.5 h-3.5" />
             Open multi-device setup guide
           </button>
+        </div>
+      )}
+
+      {cropSource && (
+        <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-2xl border border-[#26344b] bg-[#101a2a] p-5 space-y-4">
+            <div className="flex items-center justify-between"><h3 className="font-bold text-white">Crop profile picture</h3><button onClick={() => setCropSource(null)} className="p-1 text-slate-300"><X className="w-5 h-5" /></button></div>
+            <p className="text-xs text-slate-400">Move the zoom slider to frame your photo. The saved image will be square (1080 × 1080).</p>
+            <div className="mx-auto w-64 h-64 rounded-full overflow-hidden bg-black border-2 border-blue-400">
+              <img src={cropSource} alt="Crop preview" className="w-full h-full object-cover" style={{ transform: `scale(${cropZoom})` }} />
+            </div>
+            <label className="block text-xs text-slate-300">Zoom
+              <input type="range" min="1" max="2.5" step="0.05" value={cropZoom} onChange={e => setCropZoom(Number(e.target.value))} className="w-full mt-2" />
+            </label>
+            <div className="flex justify-end gap-2"><button onClick={() => setCropSource(null)} className="px-4 py-2 rounded-lg bg-slate-700 text-white text-sm">Cancel</button><button onClick={saveCroppedProfileImage} className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold">Save picture</button></div>
+          </div>
+        </div>
+      )}
+      {showProfileImage && user?.avatarUrl && (
+        <div className="fixed inset-0 z-[100] bg-black/85 flex items-center justify-center p-4" onClick={() => setShowProfileImage(false)}>
+          <button onClick={() => setShowProfileImage(false)} className="absolute top-5 right-5 text-white p-2"><X className="w-6 h-6" /></button>
+          <img src={user.avatarUrl} alt="Profile picture enlarged" className="max-w-[90vw] max-h-[85vh] object-contain rounded-xl" onClick={e => e.stopPropagation()} />
         </div>
       )}
     </div>

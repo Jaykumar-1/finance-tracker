@@ -12,7 +12,10 @@ import {
   Layers,
   ArrowRight,
   ShieldCheck,
-  Sparkles
+  Sparkles,
+  RefreshCw,
+  Download,
+  Upload
 } from 'lucide-react';
 
 export const MultiDeviceModal: React.FC = () => {
