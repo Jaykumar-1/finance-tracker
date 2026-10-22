@@ -13,53 +13,6 @@ export const DEFAULT_CATEGORIES: CategoryConfig = {
   },
 
   expense: {
-<<<<<<< HEAD
-    'Food': [
-      'Regular Meals', 'Breakfast', 'Groceries (Fruits, Veggies, Dairy)',
-      'Snacks & Biscuits', 'Eating out & Dining',
-      'Online Delivery (Zomato/Swiggy/DoorDash)', 'Healthy Food & Beverages',
-      'Fitness Food', 'Ice Cream & Bakeries'
-    ],
-    'Transport': [
-      'Metro / Subway', 'Bus & Public Transit', 'Fuel & Petrol / Diesel / EV',
-      'Auto / Taxi (Ola/Uber/Cab)', 'Train & Rail Tickets',
-      'Vehicle Maintenance & Service', 'Parking & Tolls', 'Flight Tickets'
-    ],
-    'Rent & Housing': [
-      'Monthly Rent', 'Maintenance Charges', 'Property Taxes', 'Home Repairs & Hardware'
-    ],
-    'Utility & Bills': [
-      'Electricity Bill', 'Mobile Recharges & Postpaid',
-      'Subscriptions (Netflix, Spotify, Prime)', 'Water & Sewer',
-      'Internet / Broadband WiFi', 'LPG / Gas Cylinder', 'Bank Fees & Card Charges'
-    ],
-    'Household': [
-      'Small Appliances', 'Furniture & Home Decor', 'Kitchen Utensils & Supplies',
-      'Toiletries & Detergents', 'Cleaning & Housekeeping'
-    ],
-    'Health': [
-      'Medicines & Pharmacy', 'Doctor & Hospital Visits', 'Lab Tests & Diagnostic',
-      'Gym & Yoga Membership', 'Health & Term Insurance', 'Dental & Vision Care'
-    ],
-    'Education': [
-      'School / College Fees', 'Books & Stationery',
-      'Online Courses & Certifications', 'Workshops & Seminars'
-    ],
-    'Personal (Apparel + Beauty)': [
-      'Clothing & Footwear', 'Salon, Spa & Haircut', 'Watches & Accessories',
-      'Skincare & Cosmetics', 'Electronics & Gadgets'
-    ],
-    'Social & Lifestyle (Culture + Social)': [
-      'Movies & Cinema', 'Concerts & Event Tickets', 'Outing with Friends',
-      'Vacation & Holiday Trips', 'Hobbies & Gaming', 'Festival Celebrations'
-    ],
-    'Gift & Donation': [
-      'Gifts to Loved Ones', 'Charity & NGO Donations'
-    ],
-    'Miscellaneous': [
-      'Unplanned Expense', 'One-off Purchases', 'Childcare & Daycare',
-      'Toys & Baby Care', 'Parents Support'
-=======
     'Food & Dining': [
       'Regular Meals',
       'Breakfast',
@@ -144,7 +97,6 @@ export const DEFAULT_CATEGORIES: CategoryConfig = {
       'Childcare & Daycare',
       'Toys & Baby Care',
       'Parents Support'
->>>>>>> ef174d7 (Update finance tracker)
     ]
   },
 

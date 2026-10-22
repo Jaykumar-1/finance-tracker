@@ -1,9 +1,3 @@
-<<<<<<< HEAD
-import React, { useEffect, useState } from 'react';
-import { useFinance } from '../context/FinanceContext';
-import {
-  Menu,
-=======
 import React from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { SUPPORTED_CURRENCIES } from '../utils/constants';
@@ -11,7 +5,6 @@ import {
   Menu,
   Plus,
   Target,
->>>>>>> ef174d7 (Update finance tracker)
   User,
   ShieldCheck,
   Lock,
@@ -26,13 +19,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMobileMenu }) => {
   const {
     user,
     activePage,
-<<<<<<< HEAD
-=======
     currency,
     setCurrency,
     openTxModal,
     openGoalModal,
->>>>>>> ef174d7 (Update finance tracker)
     openAuthModal,
     setActivePage,
     isSidebarHidden,
@@ -41,35 +31,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMobileMenu }) => {
     lockLedger,
   } = useFinance();
 
-<<<<<<< HEAD
-  const [isScrolled, setIsScrolled] = useState(false);
-
-  useEffect(() => {
-    let frame = 0;
-    const updateHeader = () => {
-      setIsScrolled(window.scrollY > 8);
-    };
-    const onScroll = () => {
-      if (frame) cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(updateHeader);
-    };
-    updateHeader();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
-    const observer = new MutationObserver(onScroll);
-    const main = document.querySelector('main');
-    if (main) observer.observe(main, { childList: true, subtree: true, characterData: true });
-    return () => {
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
-      observer.disconnect();
-      if (frame) cancelAnimationFrame(frame);
-    };
-  }, [activePage]);
-
-  return (
-    <header className={`sticky top-0 z-50 h-14 sm:h-16 md:h-[72px] px-2.5 sm:px-3 md:px-6 flex items-center justify-between gap-2 overflow-hidden transition-all duration-300 ${isScrolled ? 'bg-[#091321]/95 shadow-[0_12px_35px_rgba(0,0,0,0.28)] border-b border-blue-500/20 backdrop-blur-2xl' : 'bg-[#0b1424]/85 border-b border-[#26344b]/80 backdrop-blur-xl'}`}>
-=======
   const getPageTitle = () => {
     switch (activePage) {
       case 'dashboard': return 'Dashboard';
@@ -85,7 +46,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMobileMenu }) => {
 
   return (
     <header className="sticky top-0 z-50 h-14 sm:h-16 md:h-[72px] bg-[#0b1424]/85 backdrop-blur-xl border-b border-[#26344b]/80 px-2.5 sm:px-3 md:px-6 flex items-center justify-between gap-2 overflow-hidden">
->>>>>>> ef174d7 (Update finance tracker)
       {/* Left section */}
       <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-3.5 min-w-0">
         {/* Mobile menu trigger */}
@@ -111,9 +71,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMobileMenu }) => {
           <div className="hidden sm:flex w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-blue-500 items-center justify-center text-slate-950 font-black text-base shadow-md shadow-emerald-500/10">
             ₹
           </div>
-<<<<<<< HEAD
-
-=======
           <div>
             <div className="text-[10px] font-extrabold uppercase tracking-widest text-[#71839d]">
               PERSONAL FINANCE
@@ -122,14 +79,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMobileMenu }) => {
               {getPageTitle()}
             </h1>
           </div>
->>>>>>> ef174d7 (Update finance tracker)
         </div>
       </div>
 
       {/* Right section */}
       <div className="flex items-center gap-1 sm:gap-1.5 md:gap-2.5 min-w-0">
-<<<<<<< HEAD
-=======
         {/* Currency Selector */}
         <div className="hidden lg:block">
           <select
@@ -146,7 +100,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMobileMenu }) => {
           </select>
         </div>
 
->>>>>>> ef174d7 (Update finance tracker)
         {/* Privacy Lock Toggle Button */}
         {isUnlocked ? (
           <button
@@ -168,8 +121,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMobileMenu }) => {
           </button>
         )}
 
-<<<<<<< HEAD
-=======
         {/* Add Transaction Button */}
         <button
           onClick={() => openTxModal('expense')}
@@ -179,7 +130,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onToggleMobileMenu }) => {
           <span className="hidden sm:inline">Add</span>
         </button>
 
->>>>>>> ef174d7 (Update finance tracker)
         {/* User Profile / Auth Button */}
         {user ? (
           <button

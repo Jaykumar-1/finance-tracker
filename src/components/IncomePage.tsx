@@ -116,11 +116,7 @@ export const IncomePage: React.FC = () => {
       </div>
 
       {/* Period Selector Toolbar */}
-<<<<<<< HEAD
-      <div data-sticky-action-bar className="finance-sticky-bar flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#101a2b] p-3.5 rounded-2xl border border-[#26344b]">
-=======
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#101a2b] p-3.5 rounded-2xl border border-[#26344b]">
->>>>>>> ef174d7 (Update finance tracker)
         <div className="flex items-center gap-2">
           <button
             onClick={handlePrev}
