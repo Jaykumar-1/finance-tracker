@@ -1,4 +1,5 @@
 export type TransactionType = 'income' | 'expense' | 'investment';
+export type InvestmentAction = 'invest' | 'redeem';
 
 export type AccountType = 'Cash' | 'Bank account' | 'UPI' | 'Credit card' | 'Savings' | 'Demat / Brokerage' | 'Crypto wallet' | 'Other';
 
@@ -9,6 +10,8 @@ export interface Transaction {
   date: string; // YYYY-MM-DD
   amount: number;
   type: TransactionType;
+  /** Optional for backward compatibility; missing means Invest. */
+  investmentAction?: InvestmentAction;
   category: string;
   subcategory?: string;
   account: AccountType | string;

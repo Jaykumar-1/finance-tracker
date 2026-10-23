@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useFinance } from '../context/FinanceContext';
-import { TransactionType } from '../types/finance';
+import { InvestmentAction, TransactionType } from '../types/finance';
 import { ACCOUNT_OPTIONS } from '../utils/constants';
 import { formatMoney, toIsoDate } from '../utils/formatters';
+import { isRedemption } from '../utils/investmentAccounting';
 import {
   X,
   TrendingUp,
@@ -36,6 +37,7 @@ export const TransactionModal: React.FC = () => {
   } = useFinance();
 
   const [type, setType] = useState<TransactionType>(modalTxType);
+  const [investmentAction, setInvestmentAction] = useState<InvestmentAction>('invest');
   const [date, setDate] = useState<string>(modalPrefillDate);
   const [amount, setAmount] = useState<string>('');
   const [category, setCategory] = useState<string>('');
@@ -50,6 +52,7 @@ export const TransactionModal: React.FC = () => {
     const subList = categories[newType]?.[defaultCat] || [];
 
     setType(newType);
+    setInvestmentAction('invest');
     setDate(newDate || toIsoDate(new Date()));
     setAmount('');
     setCategory(defaultCat);
@@ -65,6 +68,7 @@ export const TransactionModal: React.FC = () => {
 
     if (editingTransaction) {
       setType(editingTransaction.type);
+      setInvestmentAction(editingTransaction.investmentAction || 'invest');
       setDate(editingTransaction.date);
       setAmount(String(editingTransaction.amount));
       setCategory(editingTransaction.category);
@@ -82,6 +86,7 @@ export const TransactionModal: React.FC = () => {
     const defaultCat = typeCats[0] || '';
     const subList = categories[newType]?.[defaultCat] || [];
     setType(newType);
+    if (newType !== 'investment') setInvestmentAction('invest');
     setCategory(defaultCat);
     setSubcategory(subList[0] || '');
   };
@@ -130,6 +135,7 @@ export const TransactionModal: React.FC = () => {
       updateTransaction({
         ...editingTransaction,
         type,
+        investmentAction: type === 'investment' ? investmentAction : undefined,
         date,
         amount: numAmount,
         category,
@@ -141,6 +147,7 @@ export const TransactionModal: React.FC = () => {
     } else {
       addTransaction({
         type,
+        investmentAction: type === 'investment' ? investmentAction : undefined,
         date,
         amount: numAmount,
         category,
@@ -212,12 +219,13 @@ export const TransactionModal: React.FC = () => {
 
             <div className="min-h-0 flex-1 overflow-y-auto divide-y divide-[#1f2d43]">
               {dayTransactions.length > 0 ? dayTransactions.map(tx => {
+                const redeemed = isRedemption(tx);
                 const tone = tx.type === 'income'
                   ? 'text-emerald-400'
                   : tx.type === 'expense'
                     ? 'text-rose-400'
-                    : 'text-blue-400';
-                const label = tx.type === 'income' ? 'Income' : tx.type === 'expense' ? 'Expense' : 'Investment';
+                    : redeemed ? 'text-amber-400' : 'text-blue-400';
+                const label = tx.type === 'income' ? 'Income' : tx.type === 'expense' ? 'Expense' : redeemed ? 'Investment Redemption' : 'Investment Deposit';
 
                 return (
                   <div key={tx.id} className="px-4 py-3 flex items-center gap-2.5 hover:bg-[#111e33] transition-colors">
@@ -231,7 +239,7 @@ export const TransactionModal: React.FC = () => {
                       </div>
                     </div>
                     <div className={`text-xs font-extrabold ${tone} whitespace-nowrap`}>
-                      {tx.type === 'expense' ? '−' : tx.type === 'investment' ? '↗' : '+'}{formatMoney(tx.amount, currency)}
+                      {tx.type === 'expense' || redeemed ? '−' : tx.type === 'investment' ? '↗' : '+'}{formatMoney(tx.amount, currency)}
                     </div>
                     <button
                       type="button"
@@ -263,7 +271,7 @@ export const TransactionModal: React.FC = () => {
               event.preventDefault();
               handleSave(false);
             }}
-            className="min-h-0 overflow-y-auto lg:overflow-hidden p-4 md:p-5 flex flex-col"
+            className="min-h-0 overflow-y-auto p-4 md:p-5 flex flex-col"
           >
             {/* Transaction Type Tabs */}
             <div className="grid grid-cols-3 gap-2 p-1 rounded-xl bg-[#090f1a] border border-[#26344b] shrink-0">
@@ -298,6 +306,17 @@ export const TransactionModal: React.FC = () => {
                 <span>Investment</span>
               </button>
             </div>
+
+            {type === 'investment' && (
+              <div className="mt-3 shrink-0">
+                <label className="block text-xs font-bold text-[#c8d4e5] mb-1">Investment Action *</label>
+                <select value={investmentAction} onChange={e => setInvestmentAction(e.target.value as InvestmentAction)} className="w-full px-3 py-2 rounded-xl bg-[#0d1728] border border-[#26344b] text-xs font-semibold text-[#e8eef8] focus:outline-none focus:border-blue-500">
+                  <option value="invest">Invest — Deposit / Purchase</option>
+                  <option value="redeem">Redeem / Withdraw — Principal Returned</option>
+                </select>
+                <p className="mt-1 text-[10px] text-[#71839d]">Interest, dividends, and profit received should be recorded separately as Income.</p>
+              </div>
+            )}
 
             <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 shrink-0">
               <div>

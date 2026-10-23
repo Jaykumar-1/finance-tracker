@@ -2,49 +2,52 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Global Safety Net: Default-deny all unlisted documents
+    // Default deny: every collection must be explicitly allowed below.
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Username Lookup Collection: Minimal mapping (uid, email, username) for username-based login
-    // allow get: allows reading a single known username document (/usernames/{username}) for login lookup
-    // allow list: false strictly prevents enumeration, querying, or scraping of the collection
-    // Creation requires authenticated user matching target UID and correct username field
-    // Update/Delete requires matching existing document UID and immutable uid field
+    // Username lookup is used before authentication for username-based login.
+    // A single known username can be looked up, but collection enumeration is blocked.
+    // Keep this document limited to the minimum login mapping fields only.
     match /usernames/{username} {
       allow get: if true;
       allow list: if false;
-      allow create: if request.auth != null 
+      allow create: if request.auth != null
                     && request.resource.data.uid == request.auth.uid
                     && request.resource.data.username == username;
-      allow update: if request.auth != null 
-                    && resource.data.uid == request.auth.uid 
+      allow update: if request.auth != null
+                    && resource.data.uid == request.auth.uid
                     && request.resource.data.uid == request.auth.uid
                     && request.resource.data.username == username;
-      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow delete: if request.auth != null
+                    && resource.data.uid == request.auth.uid;
     }
 
-    // Users Collection: Only the authenticated user whose request.auth.uid equals {uid} can access
+    // A signed-in user can access only their own profile and transaction subcollection.
     match /users/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
 
-      // Transactions Subcollection: Individual transaction documents isolated per user
       match /transactions/{transactionId} {
         allow read, write: if request.auth != null && request.auth.uid == uid;
       }
     }
 
-    // Cross-Device Cloud Ledgers: Accessible by direct Ledger Link or ID
-    // allow get: permits loading a specific ledger on any device holding the link
-    // allow list: false strictly blocks enumeration or scraping of all ledgers
-    // allow create, update: allows any device holding the ledger link to save transactions and sync
+    // Private cloud JSON ledger. The existing app stores ownerUid on the ledger.
+    // Same-account sign-in on another device continues to sync; a ledger ID or URL
+    // alone is NOT authorization. Unowned legacy ledgers must be claimed safely
+    // before these rules are deployed (see SECURITY_SETUP.md).
     match /ledgers/{ledgerId} {
-      allow get: if true;
+      allow get: if request.auth != null
+                 && resource.data.ownerUid == request.auth.uid;
       allow list: if false;
-      allow create, update: if true;
-      allow delete: if request.auth != null;
+      allow create: if request.auth != null
+                    && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if request.auth != null
+                    && resource.data.ownerUid == request.auth.uid
+                    && request.resource.data.ownerUid == request.auth.uid;
+      allow delete: if request.auth != null
+                    && resource.data.ownerUid == request.auth.uid;
     }
   }
 }
-

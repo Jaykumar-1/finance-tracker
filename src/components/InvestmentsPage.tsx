@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { formatMoney, formatMonthYear, getMonthKey, toIsoDate } from '../utils/formatters';
+import { isInvestmentDeposit, isRedemption, investmentTotals } from '../utils/investmentAccounting';
 import {
   LineChart,
   Plus,
@@ -78,12 +79,11 @@ export const InvestmentsPage: React.FC = () => {
     return transactions.filter(t => t.type === 'investment' && inPeriod(t.date));
   }, [transactions, periodMode, periodKey]);
 
-  const totalInvestment = useMemo(
-    () => periodInvestTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0),
-    [periodInvestTxs]
-  );
+  const periodInvestmentTotals = useMemo(() => investmentTotals(periodInvestTxs), [periodInvestTxs]);
+  const totalInvestment = periodInvestmentTotals.deposits;
+  const totalRedemptions = periodInvestmentTotals.redemptions;
 
-  // Cash flow for the same period (income - expenses) = liquid cash saved
+  // Cash flow for the same period (income - expenses + redemptions - deposits)
   const periodIncome = useMemo(
     () => transactions.filter(t => t.type === 'income' && inPeriod(t.date)).reduce((s, t) => s + (Number(t.amount) || 0), 0),
     [transactions, periodMode, periodKey]
@@ -93,23 +93,23 @@ export const InvestmentsPage: React.FC = () => {
     [transactions, periodMode, periodKey]
   );
 
-  // Net Cash Saved = income - expenses (liquid surplus before / independent of investments)
-  const netCashSaved = periodIncome - periodExpense;
+  // Net Cash Saved includes capital returned from investments and subtracts new deposits.
+  const netCashSaved = periodIncome - periodExpense - periodInvestmentTotals.deposits + periodInvestmentTotals.redemptions;
 
   // Net Investments = capital deployed into assets this period
-  const netInvestments = totalInvestment;
+  const netInvestments = periodInvestmentTotals.net;
 
-  // Wealth growth = cash surplus + investments (total money "put aside")
-  const totalWealthBuilt = netCashSaved + netInvestments;
+  // Cash saved already includes the investment cash-flow effect; show total period surplus before portfolio valuation.
+  const totalWealthBuilt = periodIncome - periodExpense;
 
   const allTimeInvestments = useMemo(
-    () => transactions.filter(t => t.type === 'investment').reduce((s, t) => s + (Number(t.amount) || 0), 0),
+    () => investmentTotals(transactions).net,
     [transactions]
   );
 
   const categoryBreakdown = useMemo(() => {
     const map: Record<string, number> = {};
-    periodInvestTxs.forEach(t => {
+    periodInvestTxs.filter(isInvestmentDeposit).forEach(t => {
       const cat = t.category || 'Other Assets';
       map[cat] = (map[cat] || 0) + (Number(t.amount) || 0);
     });
@@ -202,7 +202,7 @@ export const InvestmentsPage: React.FC = () => {
             {formatMoney(netCashSaved, currency)}
           </div>
           <p className="text-[10px] text-[#71839d] mt-1">
-            Income − Expenses (liquid surplus)
+            Income − Expenses − Deposits + Redemptions
           </p>
         </div>
 
@@ -214,9 +214,8 @@ export const InvestmentsPage: React.FC = () => {
           <div className="text-xl font-extrabold text-blue-400 mt-2 truncate">
             {formatMoney(netInvestments, currency)}
           </div>
-          <p className="text-[10px] text-[#71839d] mt-1">
-            Capital deployed into assets
-          </p>
+          <p className="text-[10px] text-[#71839d] mt-1">Gross deposits: {formatMoney(totalInvestment, currency)}</p>
+          <p className="text-[10px] text-amber-300 mt-0.5">Redemptions: {formatMoney(totalRedemptions, currency)}</p>
         </div>
 
         <div className="stat-card p-4 border-t-3 border-t-amber-400">

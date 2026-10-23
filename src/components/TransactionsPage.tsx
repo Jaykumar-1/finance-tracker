@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { Transaction, TransactionType } from '../types/finance';
 import { formatMoney, formatMonthYear, getMonthKey } from '../utils/formatters';
+import { isRedemption } from '../utils/investmentAccounting';
 import { ExcelService } from '../services/excel';
 import {
   Search,
@@ -500,6 +501,7 @@ export const TransactionsPage: React.FC = () => {
                 paginated.map(tx => {
                   const isIncome = tx.type === 'income';
                   const isInvest = tx.type === 'investment';
+                  const isRedeem = isRedemption(tx);
                   const isSelected = selectedIds.has(tx.id);
 
                   return (
@@ -530,12 +532,14 @@ export const TransactionsPage: React.FC = () => {
                           className={`inline-block px-2 py-0.5 rounded-md font-bold text-[10px] uppercase ${
                             isIncome
                               ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              : isRedeem
+                              ? 'bg-amber-500/10 text-amber-300 border border-amber-500/20'
                               : isInvest
                               ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
                               : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                           }`}
                         >
-                          {tx.type}
+                          {isRedeem ? 'Investment Redemption' : isInvest ? 'Investment Deposit' : tx.type}
                         </span>
                       </td>
                       <td className="py-3 px-4 font-semibold text-[#e8eef8] whitespace-nowrap">

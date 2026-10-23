@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { authService } from '../services/auth';
 import { formatMoney, formatMonthYear, getMonthKey, toIsoDate } from '../utils/formatters';
+import { isInvestmentDeposit, isRedemption, investmentTotals } from '../utils/investmentAccounting';
 import {
   ChevronLeft,
   ChevronRight,
@@ -138,11 +139,12 @@ export const Dashboard: React.FC = () => {
   }, [monthTxs]);
 
   const investmentTotal = useMemo(() => {
-    return monthTxs.filter(t => t.type === 'investment').reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+    return investmentTotals(monthTxs).deposits;
   }, [monthTxs]);
 
-  const netCashFlow = incomeTotal - expenseTotal - investmentTotal;
-  const savingsRate = incomeTotal > 0 ? Math.round(((incomeTotal - expenseTotal) / incomeTotal) * 100) : 0;
+  const investmentPeriodTotals = investmentTotals(monthTxs);
+  const netCashFlow = incomeTotal - expenseTotal - investmentPeriodTotals.deposits + investmentPeriodTotals.redemptions;
+  const savingsRate = incomeTotal > 0 ? Math.round((netCashFlow / incomeTotal) * 100) : 0;
 
   // Category breakdown for expenses
   const topExpenseCategories = useMemo(() => {
@@ -163,7 +165,7 @@ export const Dashboard: React.FC = () => {
 
   const targetSavings = activeGoal?.targetSavings || 0;
   const expenseBudget = activeGoal?.expenseBudget || 0;
-  const actualSaved = Math.max(0, netCashFlow + investmentTotal);
+  const actualSaved = Math.max(0, netCashFlow + investmentPeriodTotals.net);
   const goalPercent = targetSavings > 0 ? Math.min(100, Math.round((actualSaved / targetSavings) * 100)) : 0;
   const isGoalReached = targetSavings > 0 && actualSaved >= targetSavings;
   const expenseBudgetPercent = expenseBudget > 0 ? Math.min(100, Math.round((expenseTotal / expenseBudget) * 100)) : 0;
@@ -222,6 +224,7 @@ export const Dashboard: React.FC = () => {
       income: number;
       expense: number;
       investment: number;
+      redemption: number;
       txCount: number;
     }[] = [];
 
@@ -241,7 +244,8 @@ export const Dashboard: React.FC = () => {
         isToday: iso === todayIso,
         income: dayTxs.filter(t => t.type === 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0),
         expense: dayTxs.filter(t => t.type === 'expense').reduce((s, t) => s + (Number(t.amount) || 0), 0),
-        investment: dayTxs.filter(t => t.type === 'investment').reduce((s, t) => s + (Number(t.amount) || 0), 0),
+        investment: dayTxs.filter(isInvestmentDeposit).reduce((s, t) => s + (Number(t.amount) || 0), 0),
+        redemption: dayTxs.filter(isRedemption).reduce((s, t) => s + (Number(t.amount) || 0), 0),
         txCount: dayTxs.length
       });
     }
@@ -259,7 +263,8 @@ export const Dashboard: React.FC = () => {
         isToday: iso === todayIso,
         income: dayTxs.filter(t => t.type === 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0),
         expense: dayTxs.filter(t => t.type === 'expense').reduce((s, t) => s + (Number(t.amount) || 0), 0),
-        investment: dayTxs.filter(t => t.type === 'investment').reduce((s, t) => s + (Number(t.amount) || 0), 0),
+        investment: dayTxs.filter(isInvestmentDeposit).reduce((s, t) => s + (Number(t.amount) || 0), 0),
+        redemption: dayTxs.filter(isRedemption).reduce((s, t) => s + (Number(t.amount) || 0), 0),
         txCount: dayTxs.length
       });
     }
@@ -278,7 +283,8 @@ export const Dashboard: React.FC = () => {
         isToday: iso === todayIso,
         income: dayTxs.filter(t => t.type === 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0),
         expense: dayTxs.filter(t => t.type === 'expense').reduce((s, t) => s + (Number(t.amount) || 0), 0),
-        investment: dayTxs.filter(t => t.type === 'investment').reduce((s, t) => s + (Number(t.amount) || 0), 0),
+        investment: dayTxs.filter(isInvestmentDeposit).reduce((s, t) => s + (Number(t.amount) || 0), 0),
+        redemption: dayTxs.filter(isRedemption).reduce((s, t) => s + (Number(t.amount) || 0), 0),
         txCount: dayTxs.length
       });
     }
@@ -501,21 +507,21 @@ export const Dashboard: React.FC = () => {
             {isUnlocked ? formatMoney(investmentTotal, currency) : '••••••'}
           </div>
           <div className="text-[10px] text-[#71839d] flex items-center justify-between">
-            <span>{isUnlocked ? `${monthTxs.filter(t => t.type === 'investment').length} entries` : 'Locked'}</span>
-            <span className="text-blue-400 font-semibold">Wealth</span>
+            <span>{isUnlocked ? `Redeemed ${formatMoney(investmentPeriodTotals.redemptions, currency)}` : 'Locked'}</span>
+            <span className="text-blue-400 font-semibold">Gross deposits</span>
           </div>
         </div>
 
         {/* Net Savings */}
         <div className="stat-card stat-card-savings p-3 sm:p-3.5 border-t-3 border-t-amber-400">
           <div className="flex items-center justify-between text-[#8ea0ba] text-[11px] font-bold uppercase tracking-wider">
-            <span>Net Savings</span>
+            <span>Net Cash Saved</span>
             <Wallet className="w-3.5 h-3.5 text-amber-300" />
           </div>
           <div className={`text-lg sm:text-xl font-extrabold mt-1.5 mb-0.5 truncate ${
             isUnlocked ? (netCashFlow > 0 ? 'text-emerald-400' : 'text-[#71839d]') : 'text-[#71839d]'
           }`}>
-            {isUnlocked ? formatMoney(Math.max(0, netCashFlow), currency) : '••••••'}
+            {isUnlocked ? formatMoney(netCashFlow, currency) : '••••••'}
           </div>
           <div className="text-[10px] text-[#71839d] flex items-center justify-between">
             <span>{isUnlocked ? `${savingsRate}% saved` : 'Locked'}</span>
@@ -713,7 +719,7 @@ export const Dashboard: React.FC = () => {
             <div className="grid grid-cols-7 gap-1 sm:gap-1.5 md:gap-2">
               {calendarDays.map((day, idx) => {
                 const isSelected = day.isoDate === selectedDayIso;
-                const hasActivity = day.income > 0 || day.expense > 0 || day.investment > 0;
+                const hasActivity = day.income > 0 || day.expense > 0 || day.investment > 0 || day.redemption > 0;
                 return (
                   <button
                     key={idx}
@@ -784,6 +790,12 @@ export const Dashboard: React.FC = () => {
                           <span className="hidden sm:inline">↗{formatMoney(day.investment, currency)}</span>
                         </div>
                       )}
+                      {day.redemption > 0 && (
+                        <div className="text-[9px] sm:text-xs font-bold text-amber-300 bg-amber-950/40 border border-amber-500/25 px-1 sm:px-1.5 py-0.5 rounded truncate leading-tight flex items-center justify-between" title="Investment Redemption">
+                          <span className="sm:hidden">↙{formatCompactMoney(day.redemption, currency)}</span>
+                          <span className="hidden sm:inline">Redeem {formatMoney(day.redemption, currency)}</span>
+                        </div>
+                      )}
                       {!hasActivity && day.isCurrentMonth && (
                         <div className="text-[10px] text-[#42546e] opacity-0 group-hover:opacity-100 transition-opacity text-center py-1">
                           + Add
@@ -847,9 +859,16 @@ export const Dashboard: React.FC = () => {
 
                   <div className="flex items-center justify-between p-2 rounded-lg bg-[#0d1728] border border-[#1e2c42]">
                     <span className="flex items-center gap-1.5 text-[#8ea0ba]">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span><span>Net Surplus Saved</span>
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-300"></span><span>Investment Redemptions</span>
                     </span>
-                    <span className="font-bold text-emerald-400">{formatMoney(Math.max(0, netCashFlow), currency)} <span className="text-[10px] text-emerald-300/80">({incomeTotal > 0 ? Math.round((Math.max(0, netCashFlow) / incomeTotal) * 100) : 0}%)</span></span>
+                    <span className="font-bold text-amber-300">{formatMoney(investmentPeriodTotals.redemptions, currency)}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-[#0d1728] border border-[#1e2c42]">
+                    <span className="flex items-center gap-1.5 text-[#8ea0ba]">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span><span>Net Cash Saved</span>
+                    </span>
+                    <span className="font-bold text-emerald-400">{formatMoney(netCashFlow, currency)} <span className="text-[10px] text-emerald-300/80">({savingsRate}%)</span></span>
                   </div>
                 </div>
               </div>
@@ -924,6 +943,7 @@ export const Dashboard: React.FC = () => {
                     recentTransactions.map(tx => {
                       const isIncome = tx.type === 'income';
                       const isInvest = tx.type === 'investment';
+                      const isRedeem = isRedemption(tx);
                       return (
                         <div
                           key={tx.id}
@@ -934,15 +954,17 @@ export const Dashboard: React.FC = () => {
                               className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0 ${
                                 isIncome
                                   ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                  : isRedeem
+                                  ? 'bg-amber-500/10 text-amber-300 border border-amber-500/20'
                                   : isInvest
                                   ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
                                   : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                               }`}
                             >
-                              {isIncome ? '↗' : isInvest ? '◆' : '↘'}
+                              {isIncome ? '↗' : isRedeem ? '↙' : isInvest ? '◆' : '↘'}
                             </div>
                             <div className="min-w-0">
-                              <div className="font-semibold text-[#e8eef8] truncate">{tx.category}</div>
+                              <div className="font-semibold text-[#e8eef8] truncate">{tx.category}{isRedeem ? ' · Redemption' : isInvest ? ' · Deposit' : ''}</div>
                               <div className="text-[10px] text-[#71839d] truncate">
                                 {tx.date} · {tx.account}
                               </div>
@@ -954,12 +976,14 @@ export const Dashboard: React.FC = () => {
                               className={`font-bold text-xs ${
                                 isIncome
                                   ? 'text-emerald-400'
+                                  : isRedeem
+                                  ? 'text-amber-300'
                                   : isInvest
                                   ? 'text-blue-400'
                                   : 'text-rose-400'
                               }`}
                             >
-                              {isIncome ? '+' : isInvest ? '↗' : '−'}
+                              {isIncome ? '+' : isRedeem ? '↙' : isInvest ? '↗' : '−'}
                               {formatMoney(tx.amount, currency)}
                             </span>
                             <button

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { formatMoney, formatMonthYear, getMonthKey } from '../utils/formatters';
+import { isInvestmentDeposit, isRedemption, investmentTotals } from '../utils/investmentAccounting';
 import {
   ChevronLeft,
   ChevronRight,
@@ -312,8 +313,8 @@ export const AnalyticsPage: React.FC = () => {
    * 2) Main category selected → breakdown by subcategories of that category
    * 3) Category + subcategory → single slice at 100%
    */
-  const buildChartData = (type: TxType): { label: string; value: number }[] => {
-    const txs = getTxsForType(type);
+  const buildChartData = (type: TxType, redemptionOnly = false): { label: string; value: number }[] => {
+    const txs = getTxsForType(type).filter(t => type !== 'investment' || (redemptionOnly ? isRedemption(t) : isInvestmentDeposit(t)));
     const categoryFiltersApply = typeFilter === 'all' || typeFilter === type;
 
     // State 3: category + subcategory → single slice
@@ -372,6 +373,15 @@ export const AnalyticsPage: React.FC = () => {
     accountFilter,
     search
   ]);
+  const redemptionData = useMemo(() => buildChartData('investment', true), [
+    periodTxs,
+    typeFilter,
+    categoryFilter,
+    subcategoryFilter,
+    accountFilter,
+    search
+  ]);
+  const redemptionChartTotal = useMemo(() => redemptionData.reduce((sum, item) => sum + item.value, 0), [redemptionData]);
 
   // Chart/card totals follow filters (donut scope).
   const totalIncome = useMemo(() => incomeData.reduce((s, i) => s + i.value, 0), [incomeData]);
@@ -380,6 +390,15 @@ export const AnalyticsPage: React.FC = () => {
     () => investmentData.reduce((s, i) => s + i.value, 0),
     [investmentData]
   );
+  const totalRedemptions = useMemo(() => {
+    let txs = periodTxs.filter(isRedemption);
+    if (accountFilter !== 'all') txs = txs.filter(t => t.account === accountFilter);
+    const q = search.toLowerCase().trim();
+    if (q) txs = txs.filter(t => `${t.category} ${t.subcategory || ''} ${t.note || ''} ${t.description || ''} ${t.account}`.toLowerCase().includes(q));
+    if ((typeFilter === 'all' || typeFilter === 'investment') && categoryFilter !== 'all') txs = txs.filter(t => t.category === categoryFilter);
+    if ((typeFilter === 'all' || typeFilter === 'investment') && subcategoryFilter !== 'all') txs = txs.filter(t => (t.subcategory || '') === subcategoryFilter);
+    return txs.reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+  }, [periodTxs, accountFilter, search, typeFilter, categoryFilter, subcategoryFilter]);
 
   // Savings / investment rates always use the full period (ignore category, type,
   // subcategory, account, and search filters) so they stay stable while drilling down.
@@ -392,7 +411,7 @@ export const AnalyticsPage: React.FC = () => {
     [periodTxs]
   );
   const periodInvestmentTotal = useMemo(
-    () => periodTxs.filter(t => t.type === 'investment').reduce((s, t) => s + (Number(t.amount) || 0), 0),
+    () => investmentTotals(periodTxs).net,
     [periodTxs]
   );
 
@@ -485,7 +504,7 @@ export const AnalyticsPage: React.FC = () => {
     txs.forEach(t => {
       const amt = Number(t.amount) || 0;
       if (t.type === 'investment') {
-        invest += amt;
+        invest += isRedemption(t) ? -amt : amt;
         return;
       }
       if (t.type !== 'expense') return;
@@ -818,7 +837,7 @@ export const AnalyticsPage: React.FC = () => {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <div className="stat-card stat-card-income p-4">
           <div className="text-[11px] font-bold uppercase text-[#8ea0ba]">Income</div>
           <div className="text-xl font-extrabold text-emerald-400 mt-1">
@@ -836,6 +855,11 @@ export const AnalyticsPage: React.FC = () => {
           <div className="text-xl font-extrabold text-blue-400 mt-1">
             {formatMoney(totalInvestment, currency)}
           </div>
+        </div>
+        <div className="stat-card p-4 border-t-3 border-t-amber-400">
+          <div className="text-[11px] font-bold uppercase text-[#8ea0ba]">Investment Redemptions</div>
+          <div className="text-xl font-extrabold text-amber-300 mt-1">{formatMoney(totalRedemptions, currency)}</div>
+          <div className="text-[10px] text-[#71839d]">Principal returned</div>
         </div>
         <div className="stat-card p-4">
           <div className="text-[11px] font-bold uppercase text-[#8ea0ba]">Savings Rate</div>
@@ -910,6 +934,21 @@ export const AnalyticsPage: React.FC = () => {
             currency={currency}
             accentColor="#5ea7ff"
             emptyLabel="No investments in current scope"
+            centerHint={chartLevelHint('investment')}
+            onSelectCategory={label => handleDonutSelect('investment', label)}
+          />
+        </div>
+        <div className="p-5 rounded-2xl bg-[#101a2b] border border-[#26344b] shadow-md flex flex-col">
+          <h3 className="text-sm font-bold text-amber-300 text-center mb-1">
+            Investment Redemptions by {chartLevelHint('investment') === 'By subcategory' || chartLevelHint('investment') === '1 subcategory' ? 'Subcategory' : 'Category'}
+          </h3>
+          <div className="text-xs text-center text-[#71839d] mb-4">Total returned: {formatMoney(redemptionChartTotal, currency)}</div>
+          <SvgDonutChart
+            data={redemptionData}
+            total={redemptionChartTotal}
+            currency={currency}
+            accentColor="#f5c84b"
+            emptyLabel="No investment redemptions in current scope"
             centerHint={chartLevelHint('investment')}
             onSelectCategory={label => handleDonutSelect('investment', label)}
           />
