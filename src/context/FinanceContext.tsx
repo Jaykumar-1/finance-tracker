@@ -1016,52 +1016,40 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Categories Operations
   // ==========================================
 
+  const persistCategoryChanges = useCallback((updated: CategoryConfig) => {
+    // Keep category persistence isolated from transaction storage/sync logic.
+    setCategories(updated);
+    storageService.saveLocalCategories(activeUserId, updated);
+    storageService.saveLocalCategories(ledgerId, updated);
+    if (user) storageService.saveCloudUserProfile(user.id, { categories: updated }).catch(() => {});
+    persistToCloudLedger(transactions, updated, savingsGoals, currency, ledgerId);
+  }, [activeUserId, currency, ledgerId, persistToCloudLedger, savingsGoals, transactions, user]);
+
   const saveCategory = useCallback((type: TransactionType, name: string, oldName?: string): boolean => {
     const cleanName = name.trim();
     if (!cleanName) return false;
 
-    setCategories(prev => {
-      const currentMap = { ...prev[type] };
-      if (oldName && oldName !== cleanName) {
-        // Rename: preserve subcategories and position
-        const entries = Object.entries(currentMap);
-        const rebuilt: Record<string, string[]> = {};
-        for (const [key, subs] of entries) {
-          if (key === oldName) {
-            rebuilt[cleanName] = subs;
-          } else if (key !== cleanName) {
-            rebuilt[key] = subs;
-          }
-        }
-        if (!(cleanName in rebuilt)) rebuilt[cleanName] = currentMap[oldName] || [];
-        const updated = { ...prev, [type]: rebuilt };
-        storageService.saveLocalCategories(activeUserId, updated);
-        storageService.saveLocalCategories(ledgerId, updated);
-        if (user) storageService.saveCloudUserProfile(user.id, { categories: updated }).catch(() => {});
-        persistToCloudLedger(transactions, updated, savingsGoals, currency, ledgerId);
-        return updated;
+    const currentMap = { ...categories[type] };
+    if (oldName && oldName !== cleanName) {
+      const rebuilt: Record<string, string[]> = {};
+      for (const [key, subs] of Object.entries(currentMap)) {
+        if (key === oldName) rebuilt[cleanName] = subs;
+        else if (key !== cleanName) rebuilt[key] = subs;
       }
-      if (!currentMap[cleanName]) {
-        currentMap[cleanName] = [];
-      }
-      const updated = { ...prev, [type]: currentMap };
-      storageService.saveLocalCategories(activeUserId, updated);
-      storageService.saveLocalCategories(ledgerId, updated);
-      if (user) storageService.saveCloudUserProfile(user.id, { categories: updated }).catch(() => {});
-      persistToCloudLedger(transactions, updated, savingsGoals, currency, ledgerId);
-      return updated;
-    });
+      if (!(cleanName in rebuilt)) rebuilt[cleanName] = currentMap[oldName] || [];
+      persistCategoryChanges({ ...categories, [type]: rebuilt });
+    } else {
+      if (!(cleanName in currentMap)) currentMap[cleanName] = [];
+      persistCategoryChanges({ ...categories, [type]: currentMap });
+    }
 
-    // Keep explicit order in sync (append new names; rename in place)
     setCategoryOrder(prevOrder => {
       const list = [...(prevOrder[type] || [])];
       if (oldName && oldName !== cleanName) {
         const idx = list.indexOf(oldName);
         if (idx >= 0) list[idx] = cleanName;
         else if (!list.includes(cleanName)) list.push(cleanName);
-      } else if (!list.includes(cleanName)) {
-        list.push(cleanName);
-      }
+      } else if (!list.includes(cleanName)) list.push(cleanName);
       const next = { ...prevOrder, [type]: list };
       storageService.saveCategoryOrder(activeUserId, next);
       storageService.saveCategoryOrder(ledgerId, next);
@@ -1070,82 +1058,46 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     showToast(`Category "${cleanName}" saved.`, 'success');
     return true;
-  }, [activeUserId, currency, ledgerId, persistToCloudLedger, savingsGoals, showToast, transactions, user]);
+  }, [activeUserId, categories, ledgerId, persistCategoryChanges, showToast]);
 
   const deleteCategory = useCallback((type: TransactionType, name: string) => {
-    setCategories(prev => {
-      const currentMap = { ...prev[type] };
-      delete currentMap[name];
-      const updated = { ...prev, [type]: currentMap };
-      storageService.saveLocalCategories(activeUserId, updated);
-      storageService.saveLocalCategories(ledgerId, updated);
-      if (user) {
-        storageService.saveCloudUserProfile(user.id, { categories: updated }).catch(() => {});
-      }
-      persistToCloudLedger(transactions, updated, savingsGoals, currency, ledgerId);
-      return updated;
-    });
+    const currentMap = { ...categories[type] };
+    delete currentMap[name];
+    persistCategoryChanges({ ...categories, [type]: currentMap });
     setCategoryOrder(prevOrder => {
-      const list = (prevOrder[type] || []).filter(n => n !== name);
-      const next = { ...prevOrder, [type]: list };
+      const next = { ...prevOrder, [type]: (prevOrder[type] || []).filter(n => n !== name) };
       storageService.saveCategoryOrder(activeUserId, next);
       storageService.saveCategoryOrder(ledgerId, next);
       return next;
     });
     showToast(`Category "${name}" deleted.`, 'info');
-  }, [activeUserId, currency, ledgerId, persistToCloudLedger, savingsGoals, showToast, transactions, user]);
+  }, [activeUserId, categories, ledgerId, persistCategoryChanges, showToast]);
 
   const saveSubcategory = useCallback((type: TransactionType, category: string, name: string, oldName?: string): boolean => {
     const cleanName = name.trim();
-    if (!cleanName) return false;
+    if (!cleanName || !categories[type]?.[category]) return false;
 
-    let success = false;
-    setCategories(prev => {
-      const currentMap = { ...prev[type] };
-      const subcats = [...(currentMap[category] || [])];
-
-      if (oldName && oldName !== cleanName) {
-        const idx = subcats.indexOf(oldName);
-        if (idx !== -1) subcats[idx] = cleanName;
-        else subcats.push(cleanName);
-      } else if (!subcats.includes(cleanName)) {
-        subcats.push(cleanName);
-      }
-
-      currentMap[category] = subcats;
-      const updated = { ...prev, [type]: currentMap };
-      storageService.saveLocalCategories(activeUserId, updated);
-      storageService.saveLocalCategories(ledgerId, updated);
-      if (user) {
-        storageService.saveCloudUserProfile(user.id, { categories: updated }).catch(() => {});
-      }
-      persistToCloudLedger(transactions, updated, savingsGoals, currency, ledgerId);
-      success = true;
-      return updated;
-    });
-
-    if (success) {
-      showToast(`Subcategory "${cleanName}" saved.`, 'success');
+    const currentMap = { ...categories[type] };
+    const subcats = [...(currentMap[category] || [])];
+    if (oldName && oldName !== cleanName) {
+      const idx = subcats.indexOf(oldName);
+      if (idx !== -1) subcats[idx] = cleanName;
+      else if (!subcats.includes(cleanName)) subcats.push(cleanName);
+    } else if (!subcats.includes(cleanName)) {
+      subcats.push(cleanName);
     }
-    return success;
-  }, [activeUserId, currency, ledgerId, persistToCloudLedger, savingsGoals, showToast, transactions, user]);
+    currentMap[category] = subcats;
+    persistCategoryChanges({ ...categories, [type]: currentMap });
+    showToast(`Subcategory "${cleanName}" saved.`, 'success');
+    return true;
+  }, [categories, persistCategoryChanges, showToast]);
 
   const deleteSubcategory = useCallback((type: TransactionType, category: string, subcategory: string) => {
-    setCategories(prev => {
-      const currentMap = { ...prev[type] };
-      const subcats = (currentMap[category] || []).filter(s => s !== subcategory);
-      currentMap[category] = subcats;
-      const updated = { ...prev, [type]: currentMap };
-      storageService.saveLocalCategories(activeUserId, updated);
-      storageService.saveLocalCategories(ledgerId, updated);
-      if (user) {
-        storageService.saveCloudUserProfile(user.id, { categories: updated }).catch(() => {});
-      }
-      persistToCloudLedger(transactions, updated, savingsGoals, currency, ledgerId);
-      return updated;
-    });
+    const currentMap = { ...categories[type] };
+    currentMap[category] = (currentMap[category] || []).filter(item => item !== subcategory);
+    persistCategoryChanges({ ...categories, [type]: currentMap });
     showToast(`Subcategory "${subcategory}" deleted.`, 'info');
-  }, [activeUserId, currency, ledgerId, persistToCloudLedger, savingsGoals, showToast, transactions, user]);
+  }, [categories, persistCategoryChanges, showToast]);
 
   const getOrderedCategoryNames = useCallback((type: TransactionType): string[] => {
     return orderedCategoryNames(categories[type] || {}, categoryOrder[type] || []);

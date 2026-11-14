@@ -512,6 +512,18 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
 
+        {/* Investment Redemptions
+        <div className="stat-card p-3 sm:p-3.5 border-t-3 border-t-amber-400">
+          <div className="flex items-center justify-between text-[#8ea0ba] text-[11px] font-bold uppercase tracking-wider">
+            <span>Investment Redemptions</span>
+            <Wallet className="w-3.5 h-3.5 text-amber-300" />
+          </div>
+          <div className="text-lg sm:text-xl font-extrabold text-amber-300 mt-1.5 mb-0.5 truncate">
+            {isUnlocked ? formatMoney(investmentPeriodTotals.redemptions, currency) : '••••••'}
+          </div>
+          <div className="text-[10px] text-[#71839d]">{isUnlocked ? 'Capital returned this month' : 'Locked'}</div>
+        </div>  */}
+
         {/* Net Savings */}
         <div className="stat-card stat-card-savings p-3 sm:p-3.5 border-t-3 border-t-amber-400">
           <div className="flex items-center justify-between text-[#8ea0ba] text-[11px] font-bold uppercase tracking-wider">
@@ -790,12 +802,12 @@ export const Dashboard: React.FC = () => {
                           <span className="hidden sm:inline">↗{formatMoney(day.investment, currency)}</span>
                         </div>
                       )}
-                      {day.redemption > 0 && (
+                      {/* {day.redemption > 0 && (
                         <div className="text-[9px] sm:text-xs font-bold text-amber-300 bg-amber-950/40 border border-amber-500/25 px-1 sm:px-1.5 py-0.5 rounded truncate leading-tight flex items-center justify-between" title="Investment Redemption">
                           <span className="sm:hidden">↙{formatCompactMoney(day.redemption, currency)}</span>
                           <span className="hidden sm:inline">Redeem {formatMoney(day.redemption, currency)}</span>
                         </div>
-                      )}
+                      )} */}
                       {!hasActivity && day.isCurrentMonth && (
                         <div className="text-[10px] text-[#42546e] opacity-0 group-hover:opacity-100 transition-opacity text-center py-1">
                           + Add
@@ -857,12 +869,12 @@ export const Dashboard: React.FC = () => {
                     <span className="font-bold text-blue-400">{formatMoney(investmentTotal, currency)} <span className="text-[10px] text-blue-300/80">({incomeTotal > 0 ? Math.round((investmentTotal / incomeTotal) * 100) : 0}%)</span></span>
                   </div>
 
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-[#0d1728] border border-[#1e2c42]">
+                  {/* <div className="flex items-center justify-between p-2 rounded-lg bg-[#0d1728] border border-[#1e2c42]">
                     <span className="flex items-center gap-1.5 text-[#8ea0ba]">
                       <span className="w-2.5 h-2.5 rounded-full bg-amber-300"></span><span>Investment Redemptions</span>
                     </span>
                     <span className="font-bold text-amber-300">{formatMoney(investmentPeriodTotals.redemptions, currency)}</span>
-                  </div>
+                  </div> */}
 
                   <div className="flex items-center justify-between p-2 rounded-lg bg-[#0d1728] border border-[#1e2c42]">
                     <span className="flex items-center gap-1.5 text-[#8ea0ba]">

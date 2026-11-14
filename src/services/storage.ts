@@ -83,19 +83,23 @@ export class FinanceStorageService {
         return JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
       }
       const parsed = JSON.parse(raw);
+      // A saved category map is authoritative. Do not merge DEFAULT_CATEGORIES
+      // into it: doing so resurrects categories the user intentionally deleted.
+      // Defaults are used only when no saved category document exists.
       const defaults = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
       (['income', 'expense', 'investment'] as const).forEach(type => {
-        if (!parsed[type] || typeof parsed[type] !== 'object') {
-          parsed[type] = defaults[type];
-        } else {
-          Object.entries(defaults[type]).forEach(([cat, subcats]) => {
-            if (!Object.prototype.hasOwnProperty.call(parsed[type], cat)) {
-              parsed[type][cat] = subcats;
-            }
-          });
+        if (!parsed[type] || typeof parsed[type] !== 'object' || Array.isArray(parsed[type])) {
+          parsed[type] = {};
         }
+        Object.entries(parsed[type]).forEach(([category, subcategories]) => {
+          if (!Array.isArray(subcategories)) parsed[type][category] = [];
+        });
       });
-      return parsed;
+      return {
+        income: parsed.income,
+        expense: parsed.expense,
+        investment: parsed.investment
+      };
     } catch {
       return JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
     }

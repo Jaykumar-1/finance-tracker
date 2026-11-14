@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { formatMoney, formatMonthYear, getMonthKey } from '../utils/formatters';
 import { isInvestmentDeposit, isRedemption, investmentTotals } from '../utils/investmentAccounting';
+import { useMultiPeriodSelection, MultiPeriodCheckboxes } from './PeriodMultiSelector';
 import {
   ChevronLeft,
   ChevronRight,
@@ -208,7 +209,7 @@ export const AnalyticsPage: React.FC = () => {
 
   const [mode, setMode] = useState<'monthly' | 'yearly'>('monthly');
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
-  const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear());
+  const multiPeriod = useMultiPeriodSelection(transactions, selectedDate);
   const [selectedCategory, setSelectedCategory] = useState<{
     type: TxType;
     name: string;
@@ -220,13 +221,6 @@ export const AnalyticsPage: React.FC = () => {
   const [accountFilter, setAccountFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [showClassifyPanel, setShowClassifyPanel] = useState(false);
-
-  const availableYears = useMemo(() => {
-    const years = Array.from(new Set(transactions.map(t => Number(t.date.slice(0, 4)))));
-    const curYear = new Date().getFullYear();
-    if (!years.includes(curYear)) years.push(curYear);
-    return years.sort().reverse();
-  }, [transactions]);
 
   const handlePrevMonth = () => {
     setSelectedDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
@@ -268,8 +262,8 @@ export const AnalyticsPage: React.FC = () => {
       const key = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}`;
       return transactions.filter(t => getMonthKey(t.date) === key);
     }
-    return transactions.filter(t => Number(t.date.slice(0, 4)) === selectedYear);
-  }, [transactions, mode, selectedDate, selectedYear]);
+    return transactions.filter(t => multiPeriod.matches(t.date, 'yearly'));
+  }, [transactions, mode, selectedDate, multiPeriod.selectedYears, multiPeriod.selectedMonths]);
 
   /**
    * Per-type isolation:
@@ -617,7 +611,7 @@ export const AnalyticsPage: React.FC = () => {
   }, [categories, getOrderedCategoryNames]);
 
   const periodLabel =
-    mode === 'monthly' ? formatMonthYear(selectedDate) : String(selectedYear);
+    mode === 'monthly' ? formatMonthYear(selectedDate) : `${multiPeriod.selectedYears.length} year(s) · ${multiPeriod.selectedMonths.length} month(s)`;
 
   const clearFilters = () => {
     setTypeFilter('all');
@@ -709,19 +703,7 @@ export const AnalyticsPage: React.FC = () => {
               Yearly
             </button>
           </div>
-          {mode === 'yearly' && (
-            <select
-              value={selectedYear}
-              onChange={e => setSelectedYear(Number(e.target.value))}
-              className="bg-[#0d1728] border border-[#26344b] text-xs font-medium text-[#c8d4e5] rounded-lg px-2.5 py-1.5"
-            >
-              {availableYears.map(y => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-          )}
+          {mode === 'yearly' && <MultiPeriodCheckboxes years={multiPeriod.years} selectedYears={multiPeriod.selectedYears} selectedMonths={multiPeriod.selectedMonths} onToggleYear={multiPeriod.toggleYear} onToggleMonth={multiPeriod.toggleMonth} />}
         </div>
 
         <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[#1c2940]">
@@ -837,7 +819,7 @@ export const AnalyticsPage: React.FC = () => {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <div className="stat-card stat-card-income p-4">
           <div className="text-[11px] font-bold uppercase text-[#8ea0ba]">Income</div>
           <div className="text-xl font-extrabold text-emerald-400 mt-1">
@@ -860,6 +842,13 @@ export const AnalyticsPage: React.FC = () => {
           <div className="text-[11px] font-bold uppercase text-[#8ea0ba]">Investment Redemptions</div>
           <div className="text-xl font-extrabold text-amber-300 mt-1">{formatMoney(totalRedemptions, currency)}</div>
           <div className="text-[10px] text-[#71839d]">Principal returned</div>
+        </div>
+        <div className="stat-card p-4 border-t-3 border-t-emerald-400">
+          <div className="text-[11px] font-bold uppercase text-[#8ea0ba]">Net Cash Saved</div>
+          <div className={`text-xl font-extrabold mt-1 ${periodIncomeTotal - periodExpenseTotal >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+            {formatMoney(periodIncomeTotal - periodExpenseTotal, currency)}
+          </div>
+          <div className="text-[10px] text-[#71839d]">Income − expenses</div>
         </div>
         <div className="stat-card p-4">
           <div className="text-[11px] font-bold uppercase text-[#8ea0ba]">Savings Rate</div>
@@ -938,21 +927,23 @@ export const AnalyticsPage: React.FC = () => {
             onSelectCategory={label => handleDonutSelect('investment', label)}
           />
         </div>
-        <div className="p-5 rounded-2xl bg-[#101a2b] border border-[#26344b] shadow-md flex flex-col">
-          <h3 className="text-sm font-bold text-amber-300 text-center mb-1">
-            Investment Redemptions by {chartLevelHint('investment') === 'By subcategory' || chartLevelHint('investment') === '1 subcategory' ? 'Subcategory' : 'Category'}
-          </h3>
-          <div className="text-xs text-center text-[#71839d] mb-4">Total returned: {formatMoney(redemptionChartTotal, currency)}</div>
-          <SvgDonutChart
-            data={redemptionData}
-            total={redemptionChartTotal}
-            currency={currency}
-            accentColor="#f5c84b"
-            emptyLabel="No investment redemptions in current scope"
-            centerHint={chartLevelHint('investment')}
-            onSelectCategory={label => handleDonutSelect('investment', label)}
-          />
-        </div>
+        {redemptionChartTotal > 0 && (
+          <div className="p-5 rounded-2xl bg-[#101a2b] border border-[#26344b] shadow-md flex flex-col">
+            <h3 className="text-sm font-bold text-amber-300 text-center mb-1">
+              Investment Redemptions by {chartLevelHint('investment') === 'By subcategory' || chartLevelHint('investment') === '1 subcategory' ? 'Subcategory' : 'Category'}
+            </h3>
+            <div className="text-xs text-center text-[#71839d] mb-4">Total returned: {formatMoney(redemptionChartTotal, currency)}</div>
+            <SvgDonutChart
+              data={redemptionData}
+              total={redemptionChartTotal}
+              currency={currency}
+              accentColor="#f5c84b"
+              emptyLabel="No investment redemptions in current scope"
+              centerHint={chartLevelHint('investment')}
+              onSelectCategory={label => handleDonutSelect('investment', label)}
+            />
+          </div>
+        )}
       </div>
 
       {/* Drill-down panel when a category is focused */}

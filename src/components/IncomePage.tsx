@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { formatMoney, formatMonthYear, getMonthKey, toIsoDate } from '../utils/formatters';
+import { useMultiPeriodSelection, MultiPeriodCheckboxes } from './PeriodMultiSelector';
 import {
   TrendingUp,
   Plus,
@@ -24,6 +25,7 @@ export const IncomePage: React.FC = () => {
 
   const [periodMode, setPeriodMode] = useState<'monthly' | 'yearly'>('monthly');
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+  const multiPeriod = useMultiPeriodSelection(transactions, selectedDate);
 
   const handlePrev = () => {
     setSelectedDate(prev => {
@@ -67,10 +69,9 @@ export const IncomePage: React.FC = () => {
       const key = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}`;
       return transactions.filter(t => t.type === 'income' && getMonthKey(t.date) === key);
     } else {
-      const year = selectedDate.getFullYear();
-      return transactions.filter(t => t.type === 'income' && Number(t.date.slice(0, 4)) === year);
+      return transactions.filter(t => t.type === 'income' && multiPeriod.matches(t.date, 'yearly'));
     }
-  }, [transactions, periodMode, selectedDate]);
+  }, [transactions, periodMode, selectedDate, multiPeriod.selectedYears, multiPeriod.selectedMonths]);
 
   const totalIncome = useMemo(() => {
     return periodTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
@@ -158,6 +159,7 @@ export const IncomePage: React.FC = () => {
           </button>
         </div>
       </div>
+      {periodMode === 'yearly' && <MultiPeriodCheckboxes years={multiPeriod.years} selectedYears={multiPeriod.selectedYears} selectedMonths={multiPeriod.selectedMonths} onToggleYear={multiPeriod.toggleYear} onToggleMonth={multiPeriod.toggleMonth} />}
 
       {/* Summary Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">

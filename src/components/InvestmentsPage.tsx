@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useFinance } from '../context/FinanceContext';
 import { formatMoney, formatMonthYear, getMonthKey, toIsoDate } from '../utils/formatters';
 import { isInvestmentDeposit, isRedemption, investmentTotals } from '../utils/investmentAccounting';
+import { useMultiPeriodSelection, MultiPeriodCheckboxes } from './PeriodMultiSelector';
 import {
   LineChart,
   Plus,
@@ -12,7 +13,8 @@ import {
   Wallet,
   Landmark,
   TrendingUp,
-  Sparkles
+  Sparkles,
+  RotateCcw
 } from 'lucide-react';
 
 export const InvestmentsPage: React.FC = () => {
@@ -26,6 +28,7 @@ export const InvestmentsPage: React.FC = () => {
 
   const [periodMode, setPeriodMode] = useState<'monthly' | 'yearly'>('monthly');
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+  const multiPeriod = useMultiPeriodSelection(transactions, selectedDate);
 
   const handlePrev = () => {
     setSelectedDate(prev => {
@@ -71,13 +74,13 @@ export const InvestmentsPage: React.FC = () => {
 
   const inPeriod = (date: string) => {
     if (periodMode === 'monthly') return getMonthKey(date) === periodKey;
-    return date.slice(0, 4) === periodKey;
+    return multiPeriod.matches(date, 'yearly');
   };
 
   // Investment transactions for the selected period
   const periodInvestTxs = useMemo(() => {
     return transactions.filter(t => t.type === 'investment' && inPeriod(t.date));
-  }, [transactions, periodMode, periodKey]);
+  }, [transactions, periodMode, periodKey, multiPeriod.selectedYears, multiPeriod.selectedMonths]);
 
   const periodInvestmentTotals = useMemo(() => investmentTotals(periodInvestTxs), [periodInvestTxs]);
   const totalInvestment = periodInvestmentTotals.deposits;
@@ -86,11 +89,11 @@ export const InvestmentsPage: React.FC = () => {
   // Cash flow for the same period (income - expenses + redemptions - deposits)
   const periodIncome = useMemo(
     () => transactions.filter(t => t.type === 'income' && inPeriod(t.date)).reduce((s, t) => s + (Number(t.amount) || 0), 0),
-    [transactions, periodMode, periodKey]
+    [transactions, periodMode, periodKey, multiPeriod.selectedYears, multiPeriod.selectedMonths]
   );
   const periodExpense = useMemo(
     () => transactions.filter(t => t.type === 'expense' && inPeriod(t.date)).reduce((s, t) => s + (Number(t.amount) || 0), 0),
-    [transactions, periodMode, periodKey]
+    [transactions, periodMode, periodKey, multiPeriod.selectedYears, multiPeriod.selectedMonths]
   );
 
   // Net Cash Saved includes capital returned from investments and subtracts new deposits.
@@ -190,9 +193,10 @@ export const InvestmentsPage: React.FC = () => {
           </button>
         </div>
       </div>
+      {periodMode === 'yearly' && <MultiPeriodCheckboxes years={multiPeriod.years} selectedYears={multiPeriod.selectedYears} selectedMonths={multiPeriod.selectedMonths} onToggleYear={multiPeriod.toggleYear} onToggleMonth={multiPeriod.toggleMonth} />}
 
       {/* Distinct metric cards: Cash Saved vs Investments */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
         <div className="stat-card stat-card-savings p-4 border-t-3 border-t-emerald-400">
           <div className="flex items-center justify-between text-[#8ea0ba] text-[11px] font-bold uppercase tracking-wider">
             <span>Net Cash Saved</span>
@@ -204,6 +208,17 @@ export const InvestmentsPage: React.FC = () => {
           <p className="text-[10px] text-[#71839d] mt-1">
             Income − Expenses − Deposits + Redemptions
           </p>
+        </div>
+
+        <div className="stat-card p-4 border-t-3 border-t-amber-400">
+          <div className="flex items-center justify-between text-[#8ea0ba] text-[11px] font-bold uppercase tracking-wider">
+            <span>Investment Redemptions</span>
+            <RotateCcw className="w-4 h-4 text-amber-300" />
+          </div>
+          <div className="text-xl font-extrabold text-amber-300 mt-2 truncate">
+            {formatMoney(totalRedemptions, currency)}
+          </div>
+          <p className="text-[10px] text-[#71839d] mt-1">Capital returned in {periodLabel}</p>
         </div>
 
         <div className="stat-card stat-card-invest p-4 border-t-3 border-t-blue-500">
