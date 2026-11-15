@@ -404,10 +404,18 @@ export const AnalyticsPage: React.FC = () => {
     () => periodTxs.filter(t => t.type === 'expense').reduce((s, t) => s + (Number(t.amount) || 0), 0),
     [periodTxs]
   );
-  const periodInvestmentTotal = useMemo(
-    () => investmentTotals(periodTxs).net,
+  const periodInvestmentTotals = useMemo(
+    () => investmentTotals(periodTxs),
     [periodTxs]
   );
+  // Match the Dashboard's Net Cash Saved calculation exactly:
+  // income - expenses - investment deposits + investment redemptions.
+  const periodNetCashSaved =
+    periodIncomeTotal -
+    periodExpenseTotal -
+    periodInvestmentTotals.deposits +
+    periodInvestmentTotals.redemptions;
+  const periodInvestmentTotal = periodInvestmentTotals.net;
 
   const savingsRate =
     periodIncomeTotal > 0
@@ -845,10 +853,10 @@ export const AnalyticsPage: React.FC = () => {
         </div>
         <div className="stat-card p-4 border-t-3 border-t-emerald-400">
           <div className="text-[11px] font-bold uppercase text-[#8ea0ba]">Net Cash Saved</div>
-          <div className={`text-xl font-extrabold mt-1 ${periodIncomeTotal - periodExpenseTotal >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {formatMoney(periodIncomeTotal - periodExpenseTotal, currency)}
+          <div className={`text-xl font-extrabold mt-1 ${periodNetCashSaved >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+            {formatMoney(periodNetCashSaved, currency)}
           </div>
-          <div className="text-[10px] text-[#71839d]">Income − expenses</div>
+          <div className="text-[10px] text-[#71839d]">Income − expenses − investment deposits + redemptions</div>
         </div>
         <div className="stat-card p-4">
           <div className="text-[11px] font-bold uppercase text-[#8ea0ba]">Savings Rate</div>

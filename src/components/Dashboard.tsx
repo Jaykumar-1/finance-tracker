@@ -522,7 +522,7 @@ export const Dashboard: React.FC = () => {
             {isUnlocked ? formatMoney(investmentPeriodTotals.redemptions, currency) : '••••••'}
           </div>
           <div className="text-[10px] text-[#71839d]">{isUnlocked ? 'Capital returned this month' : 'Locked'}</div>
-        </div>  */}
+        </div> */}
 
         {/* Net Savings */}
         <div className="stat-card stat-card-savings p-3 sm:p-3.5 border-t-3 border-t-amber-400">
